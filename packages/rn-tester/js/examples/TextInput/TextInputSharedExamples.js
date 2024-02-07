@@ -10,21 +10,21 @@
 
 'use strict';
 
+import type {RNTesterModuleExample} from '../../types/RNTesterTypes';
+import type {TextStyle} from 'react-native/Libraries/StyleSheet/StyleSheet';
+
+import RNTesterButton from '../../components/RNTesterButton';
+import {RNTesterThemeContext} from '../../components/RNTesterTheme';
 import * as React from 'react';
 import {useContext, useState} from 'react';
 import {
   Button,
   Platform,
+  StyleSheet,
   Text,
   TextInput,
   View,
-  StyleSheet,
 } from 'react-native';
-import type {TextStyle} from 'react-native/Libraries/StyleSheet/StyleSheet';
-
-import RNTesterButton from '../../components/RNTesterButton';
-import {RNTesterThemeContext} from '../../components/RNTesterTheme';
-import type {RNTesterModuleExample} from '../../types/RNTesterTypes';
 
 const styles = StyleSheet.create({
   default: {
@@ -438,7 +438,7 @@ class TokenizedTextExample extends React.Component<
       if (token[0].length === 0) {
         index = 1;
       }
-      parts.push(_text.substr(0, index));
+      parts.push(_text.slice(0, index));
       parts.push(token[0]);
       index = index + token[0].length;
       _text = _text.slice(index);

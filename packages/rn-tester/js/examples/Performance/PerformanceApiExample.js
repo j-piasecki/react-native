@@ -13,9 +13,9 @@
 import type MemoryInfo from 'react-native/Libraries/WebPerformance/MemoryInfo';
 import type ReactNativeStartupTiming from 'react-native/Libraries/WebPerformance/ReactNativeStartupTiming';
 
-import * as React from 'react';
-import {StyleSheet, View, Text, Button} from 'react-native';
 import RNTesterPage from '../../components/RNTesterPage';
+import * as React from 'react';
+import {Button, StyleSheet, Text, View} from 'react-native';
 import Performance from 'react-native/Libraries/WebPerformance/Performance';
 
 const {useState, useCallback} = React;
@@ -27,8 +27,6 @@ function MemoryExample(): React.Node {
   const onGetMemoryInfo = useCallback(() => {
     // performance.memory is not included in bom.js yet.
     // Once we release the change in flow this can be removed.
-    // $FlowFixMe[prop-missing]
-    // $FlowFixMe[incompatible-call]
     setMemoryInfo(performance.memory);
   }, []);
   return (
@@ -58,9 +56,7 @@ function StartupTimingExample(): React.Node {
   const onGetStartupTiming = useCallback(() => {
     // performance.reactNativeStartupTiming is not included in bom.js yet.
     // Once we release the change in flow this can be removed.
-    // $FlowFixMe[prop-missing]
-    // $FlowFixMe[incompatible-call]
-    setStartUpTiming(performance.reactNativeStartupTiming);
+    setStartUpTiming(performance.rnStartupTiming);
   }, []);
   return (
     <RNTesterPage noScroll={true} title="performance.reactNativeStartupTiming">
@@ -70,24 +66,22 @@ function StartupTimingExample(): React.Node {
           title="Click to update React startup timing"
         />
         <View>
-          <Text>{`startTime: ${
-            startUpTiming == null ? 'N/A' : startUpTiming.startTime
-          } ms`}</Text>
+          <Text>{`startTime: ${String(startUpTiming?.startTime)} ms`}</Text>
+          <Text>{`initializeRuntimeStart: ${String(
+            startUpTiming?.initializeRuntimeStart,
+          )} ms`}</Text>
           <Text>
-            {`executeJavaScriptBundleEntryPointStart: ${
-              startUpTiming == null
-                ? 'N/A'
-                : startUpTiming.executeJavaScriptBundleEntryPointStart
-            } ms`}
+            {`executeJavaScriptBundleEntryPointStart: ${String(
+              startUpTiming?.executeJavaScriptBundleEntryPointStart,
+            )} ms`}
           </Text>
-          <Text>{`executeJavaScriptBundleEntryPointEnd: ${
-            startUpTiming == null
-              ? 'N/A'
-              : startUpTiming.executeJavaScriptBundleEntryPointEnd
-          } ms`}</Text>
-          <Text>{`endTime: ${
-            startUpTiming == null ? 'N/A' : startUpTiming.endTime
-          } ms`}</Text>
+          <Text>{`executeJavaScriptBundleEntryPointEnd: ${String(
+            startUpTiming?.executeJavaScriptBundleEntryPointEnd,
+          )} ms`}</Text>
+          <Text>{`initializeRuntimeEnd: ${String(
+            startUpTiming?.initializeRuntimeEnd,
+          )} ms`}</Text>
+          <Text>{`endTime: ${String(startUpTiming?.endTime)} ms`}</Text>
         </View>
       </View>
     </RNTesterPage>

@@ -11,54 +11,53 @@
 
 'use-strict';
 
-import {
-  assertGenericTypeAnnotationHasExactlyOneTypeParameter,
-  isObjectProperty,
-  parseObjectProperty,
-  wrapNullable,
-  unwrapNullable,
-  buildSchemaFromConfigType,
-  buildSchema,
-  parseModuleName,
-  createComponentConfig,
-  propertyNames,
-  getCommandOptions,
-  getOptions,
-  getCommandTypeNameAndOptionsExpression,
-} from '../parsers-commons';
 import type {ParserType} from '../errors';
 
-const {Visitor} = require('../parsers-primitives');
-const {wrapComponentSchema} = require('../schema.js');
-const {buildComponentSchema} = require('../flow/components');
-const {buildModuleSchema} = require('../parsers-commons.js');
+import {FlowParser} from '../flow/parser';
+import {MockedParser} from '../parserMock';
+import {
+  assertGenericTypeAnnotationHasExactlyOneTypeParameter,
+  buildSchema,
+  buildSchemaFromConfigType,
+  createComponentConfig,
+  getCommandOptions,
+  getCommandTypeNameAndOptionsExpression,
+  getOptions,
+  getTypeResolutionStatus,
+  handleGenericTypeAnnotation,
+  isObjectProperty,
+  parseModuleName,
+  parseObjectProperty,
+  propertyNames,
+  unwrapNullable,
+  wrapNullable,
+} from '../parsers-commons';
+
 const {
-  isModuleRegistryCall,
-  createParserErrorCapturer,
-} = require('../utils.js');
-const {
-  ParserError,
-  UnsupportedObjectPropertyTypeAnnotationParserError,
-  UnusedModuleInterfaceParserError,
-  MoreThanOneModuleRegistryCallsParserError,
-  IncorrectModuleRegistryCallArityParserError,
   IncorrectModuleRegistryCallArgumentTypeParserError,
-  UntypedModuleRegistryCallParserError,
+  IncorrectModuleRegistryCallArityParserError,
+  MisnamedModuleInterfaceParserError,
   ModuleInterfaceNotFoundParserError,
   MoreThanOneModuleInterfaceParserError,
-  MisnamedModuleInterfaceParserError,
+  MoreThanOneModuleRegistryCallsParserError,
+  ParserError,
+  UnsupportedObjectPropertyTypeAnnotationParserError,
+  UntypedModuleRegistryCallParserError,
+  UnusedModuleInterfaceParserError,
 } = require('../errors');
-
-import {MockedParser} from '../parserMock';
-import {FlowParser} from '../flow/parser';
+const {buildComponentSchema} = require('../flow/components');
+const {flowTranslateTypeAnnotation} = require('../flow/modules/index');
+const {buildModuleSchema} = require('../parsers-commons.js');
+const {Visitor} = require('../parsers-primitives');
+const {wrapComponentSchema} = require('../schema.js');
+const typeScriptTranslateTypeAnnotation = require('../typescript/modules/index');
+const {
+  createParserErrorCapturer,
+  isModuleRegistryCall,
+} = require('../utils.js');
 
 const parser = new MockedParser();
-
 const flowParser = new FlowParser();
-
-const {flowTranslateTypeAnnotation} = require('../flow/modules/index');
-const typeScriptTranslateTypeAnnotation = require('../typescript/modules/index');
-const {resolveTypeAnnotation} = require('../flow/utils');
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -323,6 +322,7 @@ describe('parseObjectProperty', () => {
       );
       expect(() =>
         parseObjectProperty(
+          null, // parentObject
           property,
           moduleName,
           types,
@@ -357,6 +357,7 @@ describe('parseObjectProperty', () => {
       );
       expect(() =>
         parseObjectProperty(
+          null, // parentObject
           property,
           moduleName,
           types,
@@ -409,7 +410,7 @@ describe('buildSchemaFromConfigType', () => {
     (_ast, _parser) => componentSchemaMock,
   );
   const buildModuleSchemaMock = jest.fn(
-    (_0, _1, _2, _3, _4, _5) => moduleSchemaMock,
+    (_0, _1, _2, _3, _4) => moduleSchemaMock,
   );
 
   const buildSchemaFromConfigTypeHelper = (
@@ -424,7 +425,6 @@ describe('buildSchemaFromConfigType', () => {
       buildComponentSchemaMock,
       buildModuleSchemaMock,
       parser,
-      resolveTypeAnnotation,
       flowTranslateTypeAnnotation,
     );
 
@@ -507,7 +507,6 @@ describe('buildSchemaFromConfigType', () => {
             astMock,
             expect.any(Function),
             parser,
-            resolveTypeAnnotation,
             flowTranslateTypeAnnotation,
           );
 
@@ -679,7 +678,6 @@ describe('buildSchema', () => {
         buildModuleSchema,
         Visitor,
         parser,
-        resolveTypeAnnotation,
         flowTranslateTypeAnnotation,
       );
 
@@ -713,13 +711,68 @@ describe('buildSchema', () => {
         buildModuleSchema,
         Visitor,
         flowParser,
-        resolveTypeAnnotation,
         flowTranslateTypeAnnotation,
       );
 
       expect(getConfigTypeSpy).toHaveBeenCalledTimes(1);
       expect(getConfigTypeSpy).toHaveBeenCalledWith(
-        parser.getAst(contents),
+        parser.getAst(contents, 'fileName'),
+        Visitor,
+      );
+      expect(schema).toEqual({
+        modules: {
+          Module: {
+            type: 'Component',
+            components: {
+              Module: {
+                extendsProps: [
+                  {
+                    type: 'ReactNativeBuiltInType',
+                    knownTypeName: 'ReactNativeCoreViewProps',
+                  },
+                ],
+                events: [],
+                props: [],
+                commands: [],
+              },
+            },
+          },
+        },
+      });
+    });
+  });
+
+  describe('when there is a codegenNativeComponent, using `as`', () => {
+    const contents = `
+      import type {ViewProps} from 'ViewPropTypes';
+      import type {HostComponent} from 'react-native';
+
+      const codegenNativeComponent = require('codegenNativeComponent');
+
+      export type ModuleProps = $ReadOnly<{|
+        ...ViewProps,
+      |}>;
+
+      export default codegenNativeComponent<ModuleProps>(
+        'Module',
+      ) as HostComponent<ModuleProps>;
+    `;
+
+    it('returns a module with good properties', () => {
+      const schema = buildSchema(
+        contents,
+        'fileName',
+        wrapComponentSchema,
+        buildComponentSchema,
+        buildModuleSchema,
+        Visitor,
+        flowParser,
+        flowTranslateTypeAnnotation,
+      );
+
+      expect(getConfigTypeSpy).toHaveBeenCalledTimes(1);
+      expect(getConfigTypeSpy).toHaveBeenCalledWith(
+        parser.getAst(contents, 'fileName'),
         Visitor,
       );
       expect(schema).toEqual({
@@ -768,13 +821,12 @@ describe('buildSchema', () => {
         buildModuleSchema,
         Visitor,
         flowParser,
-        resolveTypeAnnotation,
         flowTranslateTypeAnnotation,
       );
 
       expect(getConfigTypeSpy).toHaveBeenCalledTimes(1);
       expect(getConfigTypeSpy).toHaveBeenCalledWith(
-        parser.getAst(contents),
+        parser.getAst(contents, 'fileName'),
         Visitor,
       );
       expect(schema).toEqual({
@@ -1064,7 +1116,6 @@ describe('buildModuleSchema', () => {
           ast,
           tryParse,
           flowParser,
-          resolveTypeAnnotation,
           flowTranslateTypeAnnotation,
         ),
       ).toThrow(expected);
@@ -1079,7 +1130,6 @@ describe('buildModuleSchema', () => {
           ast,
           tryParse,
           flowParser,
-          resolveTypeAnnotation,
           flowTranslateTypeAnnotation,
         ),
       ).not.toThrow();
@@ -1091,7 +1141,7 @@ describe('buildModuleSchema', () => {
       const contents = `
       import type {TurboModule} from 'react-native/Libraries/TurboModule/RCTExport';
         import * as TurboModuleRegistry from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
-    
+
         export interface Spec extends TurboModule {
           +getBool: (arg: boolean) => boolean;      }
         export interface SpecOther extends TurboModule {
@@ -1116,7 +1166,6 @@ describe('buildModuleSchema', () => {
           ast,
           tryParse,
           flowParser,
-          resolveTypeAnnotation,
           flowTranslateTypeAnnotation,
         ),
       ).toThrow(expected);
@@ -1131,7 +1180,6 @@ describe('buildModuleSchema', () => {
           ast,
           tryParse,
           flowParser,
-          resolveTypeAnnotation,
           flowTranslateTypeAnnotation,
         ),
       ).not.toThrow();
@@ -1143,11 +1191,11 @@ describe('buildModuleSchema', () => {
       const contents = `
       import type {TurboModule} from 'react-native/Libraries/TurboModule/RCTExport';
         import * as TurboModuleRegistry from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
-  
+
         export interface MisnamedSpec extends TurboModule {
           +getArray: (a: Array<any>) => Array<string>;
         }
-  
+
         export default (TurboModuleRegistry.getEnforcing<Spec>(
           'SampleTurboModule',
         ): Spec);
@@ -1171,7 +1219,6 @@ describe('buildModuleSchema', () => {
           ast,
           tryParse,
           flowParser,
-          resolveTypeAnnotation,
           flowTranslateTypeAnnotation,
         ),
       ).toThrow(expected);
@@ -1186,7 +1233,6 @@ describe('buildModuleSchema', () => {
           ast,
           tryParse,
           flowParser,
-          resolveTypeAnnotation,
           flowTranslateTypeAnnotation,
         ),
       ).not.toThrow();
@@ -1229,7 +1275,6 @@ describe('buildModuleSchema', () => {
       ast,
       tryParse,
       flowParser,
-      resolveTypeAnnotation,
       flowTranslateTypeAnnotation,
     );
 
@@ -1555,5 +1600,122 @@ describe('getCommandTypeNameAndOptionsExpression', () => {
       ];
       expect(propertyNames(properties)).toEqual([]);
     });
+  });
+});
+
+describe('getTypeResolutionStatus', () => {
+  it('returns type resolution status for a type declaration', () => {
+    const typeAnnotation = {
+      id: {
+        name: 'TypeAnnotationName',
+      },
+    };
+    expect(
+      getTypeResolutionStatus('alias', typeAnnotation, flowParser),
+    ).toEqual({
+      successful: true,
+      type: 'alias',
+      name: 'TypeAnnotationName',
+    });
+  });
+
+  it('returns type resolution status for an enum declaration', () => {
+    const typeAnnotation = {
+      id: {
+        name: 'TypeAnnotationName',
+      },
+    };
+    expect(getTypeResolutionStatus('enum', typeAnnotation, flowParser)).toEqual(
+      {
+        successful: true,
+        type: 'enum',
+        name: 'TypeAnnotationName',
+      },
+    );
+  });
+});
+
+describe('handleGenericTypeAnnotation', () => {
+  it('returns when TypeAnnotation is a type declaration', () => {
+    const typeAnnotation = {
+      id: {
+        name: 'TypeAnnotationName',
+      },
+    };
+    const resolvedTypeAnnotation = {
+      type: 'TypeAlias',
+      right: {
+        type: 'TypeAnnotation',
+      },
+    };
+    expect(
+      handleGenericTypeAnnotation(
+        typeAnnotation,
+        resolvedTypeAnnotation,
+        flowParser,
+      ),
+    ).toEqual({
+      typeAnnotation: {
+        type: 'TypeAnnotation',
+      },
+      typeResolutionStatus: {
+        successful: true,
+        type: 'alias',
+        name: 'TypeAnnotationName',
+      },
+    });
+  });
+
+  it('returns when TypeAnnotation is an enum declaration', () => {
+    const typeAnnotation = {
+      id: {
+        name: 'TypeAnnotationName',
+      },
+    };
+    const resolvedTypeAnnotation = {
+      type: 'EnumDeclaration',
+      body: {
+        type: 'TypeAnnotation',
+      },
+    };
+    expect(
+      handleGenericTypeAnnotation(
+        typeAnnotation,
+        resolvedTypeAnnotation,
+        flowParser,
+      ),
+    ).toEqual({
+      typeAnnotation: {
+        type: 'TypeAnnotation',
+      },
+      typeResolutionStatus: {
+        successful: true,
+        type: 'enum',
+        name: 'TypeAnnotationName',
+      },
+    });
+  });
+
+  it('throws when the non GenericTypeAnnotation is unsupported', () => {
+    const typeAnnotation = {
+      type: 'UnsupportedTypeAnnotation',
+      id: {
+        name: 'UnsupportedType',
+      },
+    };
+    const resolvedTypeAnnotation = {
+      type: 'UnsupportedTypeAnnotation',
+    };
+    expect(() =>
+      handleGenericTypeAnnotation(
+        typeAnnotation,
+        resolvedTypeAnnotation,
+        flowParser,
+      ),
+    ).toThrow(
+      new Error(
+        parser.genericTypeAnnotationErrorMessage(resolvedTypeAnnotation),
+      ),
+    );
   });
 });

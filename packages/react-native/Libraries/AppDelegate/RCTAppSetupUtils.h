@@ -11,26 +11,22 @@
 
 #ifdef __cplusplus
 
-#if RCT_NEW_ARCH_ENABLED
+#import <react/config/ReactNativeConfig.h>
 
-#ifndef RCT_USE_HERMES
-#if __has_include(<reacthermes/HermesExecutorFactory.h>)
-#define RCT_USE_HERMES 1
-#else
-#define RCT_USE_HERMES 0
-#endif
-#endif
+#import <memory>
 
-#if RCT_USE_HERMES
+#if USE_HERMES
+#if __has_include(<jsireact/HermesExecutorFactory.h>)
+#import <jsireact/HermesExecutorFactory.h>
+#elif __has_include(<reacthermes/HermesExecutorFactory.h>)
 #import <reacthermes/HermesExecutorFactory.h>
-#else
-#import <React/JSCExecutorFactory.h>
 #endif
+#else // USE_HERMES
+#import <React/JSCExecutorFactory.h>
+#endif // USE_HERMES
 
 #import <ReactCommon/RCTTurboModuleManager.h>
-#endif
 
-#if RCT_NEW_ARCH_ENABLED
 // Forward declaration to decrease compilation coupling
 namespace facebook::react {
 class RuntimeScheduler;
@@ -41,14 +37,27 @@ RCT_EXTERN id<RCTTurboModule> RCTAppSetupDefaultModuleFromClass(Class moduleClas
 std::unique_ptr<facebook::react::JSExecutorFactory> RCTAppSetupDefaultJsExecutorFactory(
     RCTBridge *bridge,
     RCTTurboModuleManager *turboModuleManager,
-    std::shared_ptr<facebook::react::RuntimeScheduler> const &runtimeScheduler);
-#endif
+    const std::shared_ptr<facebook::react::RuntimeScheduler> &runtimeScheduler);
+
+std::unique_ptr<facebook::react::JSExecutorFactory> RCTAppSetupJsExecutorFactoryForOldArch(
+    RCTBridge *bridge,
+    const std::shared_ptr<facebook::react::RuntimeScheduler> &runtimeScheduler);
+
+/**
+ * Register features and experiments prior to app initialization.
+ */
+void RCTAppSetupPrepareApp(
+    UIApplication *application,
+    BOOL turboModuleEnabled,
+    const facebook::react::ReactNativeConfig &reactNativeConfig);
 
 #endif // __cplusplus
 
 RCT_EXTERN_C_BEGIN
 
-void RCTAppSetupPrepareApp(UIApplication *application, BOOL turboModuleEnabled);
+void RCTAppSetupPrepareApp(UIApplication *application, BOOL turboModuleEnabled)
+    __deprecated_msg("Use the 3-argument overload of RCTAppSetupPrepareApp instead");
+
 UIView *RCTAppSetupDefaultRootView(
     RCTBridge *bridge,
     NSString *moduleName,

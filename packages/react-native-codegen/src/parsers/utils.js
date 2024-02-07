@@ -11,7 +11,6 @@
 'use strict';
 
 const {ParserError} = require('./errors');
-
 const path = require('path');
 
 export type TypeDeclarationMap = {[declarationName: string]: $FlowFixMe};
@@ -36,6 +35,9 @@ export type ParserErrorCapturer = <T>(fn: () => T) => ?T;
 
 // $FlowFixMe[unclear-type] there's no flowtype for ASTs
 export type PropAST = Object;
+
+// $FlowFixMe[unclear-type] there's no flowtype for ASTs
+export type ASTNode = Object;
 
 function createParserErrorCapturer(): [
   Array<ParserError>,
@@ -79,6 +81,12 @@ function verifyPlatforms(
     }
 
     if (name.endsWith('IOS')) {
+      excludedPlatforms.add('android');
+      return;
+    }
+
+    if (name.endsWith('Windows')) {
+      excludedPlatforms.add('iOS');
       excludedPlatforms.add('android');
       return;
     }

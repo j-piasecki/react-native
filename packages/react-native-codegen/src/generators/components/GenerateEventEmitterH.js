@@ -10,22 +10,22 @@
 
 'use strict';
 
-const nullthrows = require('nullthrows');
-
-const {
-  getImports,
-  getCppTypeForAnnotation,
-  generateEventStructName,
-} = require('./CppHelpers');
-const {indent, toSafeCppString} = require('../Utils');
-
 import type {
   ComponentShape,
+  EventTypeAnnotation,
   EventTypeShape,
   NamedShape,
-  EventTypeAnnotation,
   SchemaType,
 } from '../../CodegenSchema';
+
+const {indent, toSafeCppString} = require('../Utils');
+const {
+  generateEventStructName,
+  getCppArrayTypeForAnnotation,
+  getCppTypeForAnnotation,
+  getImports,
+} = require('./CppHelpers');
+const nullthrows = require('nullthrows');
 
 // File path -> contents
 type FilesOutput = Map<string, string>;
@@ -56,11 +56,9 @@ const FileTemplate = ({
 #include <react/renderer/components/view/ViewEventEmitter.h>
 ${[...extraIncludes].join('\n')}
 
-namespace facebook {
-namespace react {
+namespace facebook::react {
 ${componentEmitters}
-} // namespace react
-} // namespace facebook
+} // namespace facebook::react
 `;
 
 const ComponentTemplate = ({
@@ -133,6 +131,17 @@ function getNativeTypeFromAnnotation(
     case 'StringEnumTypeAnnotation':
     case 'ObjectTypeAnnotation':
       return generateEventStructName([...nameParts, eventProperty.name]);
+    case 'ArrayTypeAnnotation':
+      const eventTypeAnnotation = eventProperty.typeAnnotation;
+      if (eventTypeAnnotation.type !== 'ArrayTypeAnnotation') {
+        throw new Error(
+          "Inconsistent Codegen state: type was ArrayTypeAnnotation at the beginning of the body and now it isn't",
+        );
+      }
+      return getCppArrayTypeForAnnotation(eventTypeAnnotation.elementType, [
+        ...nameParts,
+        eventProperty.name,
+      ]);
     default:
       (type: empty);
       throw new Error(`Received invalid event property type ${type}`);
@@ -165,6 +174,33 @@ function generateEnum(
   );
 }
 
+function handleGenerateStructForArray(
+  structs: StructsMap,
+  name: string,
+  componentName: string,
+  elementType: EventTypeAnnotation,
+  nameParts: $ReadOnlyArray<string>,
+): void {
+  if (elementType.type === 'ObjectTypeAnnotation') {
+    generateStruct(
+      structs,
+      componentName,
+      nameParts.concat([name]),
+      nullthrows(elementType.properties),
+    );
+  } else if (elementType.type === 'StringEnumTypeAnnotation') {
+    generateEnum(structs, elementType.options, nameParts.concat([name]));
+  } else if (elementType.type === 'ArrayTypeAnnotation') {
+    handleGenerateStructForArray(
+      structs,
+      name,
+      componentName,
+      elementType.elementType,
+      nameParts,
+    );
+  }
+}
+
 function generateStruct(
   structs: StructsMap,
   componentName: string,
@@ -193,6 +229,15 @@ function generateStruct(
       case 'DoubleTypeAnnotation':
       case 'FloatTypeAnnotation':
       case 'MixedTypeAnnotation':
+        return;
+      case 'ArrayTypeAnnotation':
+        handleGenerateStructForArray(
+          structs,
+          name,
+          componentName,
+          typeAnnotation.elementType,
+          nameParts,
+        );
         return;
       case 'ObjectTypeAnnotation':
         generateStruct(
@@ -266,12 +311,13 @@ module.exports = {
     schema: SchemaType,
     packageName?: string,
     assumeNonnull: boolean = false,
+    headerPrefix?: string,
   ): FilesOutput {
     const moduleComponents: ComponentCollection = Object.keys(schema.modules)
       .map(moduleName => {
         const module = schema.modules[moduleName];
         if (module.type !== 'Component') {
-          return;
+          return null;
         }
 
         const {components} = module;

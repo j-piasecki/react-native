@@ -141,11 +141,24 @@ export default class Performance {
   }
 
   // Startup metrics is not used in web, but only in React Native.
-  get reactNativeStartupTiming(): ReactNativeStartupTiming {
+  get rnStartupTiming(): ReactNativeStartupTiming {
     if (NativePerformance?.getReactNativeStartupTiming) {
-      return new ReactNativeStartupTiming(
-        NativePerformance.getReactNativeStartupTiming(),
-      );
+      const {
+        startTime,
+        endTime,
+        initializeRuntimeStart,
+        initializeRuntimeEnd,
+        executeJavaScriptBundleEntryPointStart,
+        executeJavaScriptBundleEntryPointEnd,
+      } = NativePerformance.getReactNativeStartupTiming();
+      return new ReactNativeStartupTiming({
+        startTime,
+        endTime,
+        initializeRuntimeStart,
+        initializeRuntimeEnd,
+        executeJavaScriptBundleEntryPointStart,
+        executeJavaScriptBundleEntryPointEnd,
+      });
     }
     return new ReactNativeStartupTiming();
   }

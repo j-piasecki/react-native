@@ -18,7 +18,7 @@ type FlexAlignType =
   | 'stretch'
   | 'baseline';
 
-type DimensionValue =
+export type DimensionValue =
   | number
   | 'auto'
   | `${number}%`
@@ -40,6 +40,7 @@ export interface FlexStyle {
     | 'stretch'
     | 'space-between'
     | 'space-around'
+    | 'space-evenly'
     | undefined;
   alignItems?: FlexAlignType | undefined;
   alignSelf?: 'auto' | FlexAlignType | undefined;
@@ -69,13 +70,6 @@ export interface FlexStyle {
   flexShrink?: number | undefined;
   flexWrap?: 'wrap' | 'nowrap' | 'wrap-reverse' | undefined;
   height?: DimensionValue | undefined;
-  inset?: DimensionValue | undefined;
-  insetBlock?: DimensionValue | undefined;
-  insetBlockEnd?: DimensionValue | undefined;
-  insetBlockStart?: DimensionValue | undefined;
-  insetInline?: DimensionValue | undefined;
-  insetInlineEnd?: DimensionValue | undefined;
-  insetInlineStart?: DimensionValue | undefined;
   justifyContent?:
     | 'flex-start'
     | 'flex-end'
@@ -86,15 +80,9 @@ export interface FlexStyle {
     | undefined;
   left?: DimensionValue | undefined;
   margin?: DimensionValue | undefined;
-  marginBlock?: DimensionValue | undefined;
-  marginBlockEnd?: DimensionValue | undefined;
-  marginBlockStart?: DimensionValue | undefined;
   marginBottom?: DimensionValue | undefined;
   marginEnd?: DimensionValue | undefined;
   marginHorizontal?: DimensionValue | undefined;
-  marginInline?: DimensionValue | undefined;
-  marginInlineEnd?: DimensionValue | undefined;
-  marginInlineStart?: DimensionValue | undefined;
   marginLeft?: DimensionValue | undefined;
   marginRight?: DimensionValue | undefined;
   marginStart?: DimensionValue | undefined;
@@ -107,20 +95,14 @@ export interface FlexStyle {
   overflow?: 'visible' | 'hidden' | 'scroll' | undefined;
   padding?: DimensionValue | undefined;
   paddingBottom?: DimensionValue | undefined;
-  paddingBlock?: DimensionValue | undefined;
-  paddingBlockEnd?: DimensionValue | undefined;
-  paddingBlockStart?: DimensionValue | undefined;
   paddingEnd?: DimensionValue | undefined;
   paddingHorizontal?: DimensionValue | undefined;
-  paddingInline?: DimensionValue | undefined;
-  paddingInlineEnd?: DimensionValue | undefined;
-  paddingInlineStart?: DimensionValue | undefined;
   paddingLeft?: DimensionValue | undefined;
   paddingRight?: DimensionValue | undefined;
   paddingStart?: DimensionValue | undefined;
   paddingTop?: DimensionValue | undefined;
   paddingVertical?: DimensionValue | undefined;
-  position?: 'absolute' | 'relative' | undefined;
+  position?: 'absolute' | 'relative' | 'static' | undefined;
   right?: DimensionValue | undefined;
   start?: DimensionValue | undefined;
   top?: DimensionValue | undefined;
@@ -140,7 +122,7 @@ export interface ShadowStyleIOS {
   shadowRadius?: number | undefined;
 }
 
-interface PerpectiveTransform {
+interface PerspectiveTransform {
   perspective: AnimatableNumericValue;
 }
 
@@ -173,11 +155,11 @@ interface ScaleYTransform {
 }
 
 interface TranslateXTransform {
-  translateX: AnimatableNumericValue;
+  translateX: AnimatableNumericValue | `${number}%`;
 }
 
 interface TranslateYTransform {
-  translateY: AnimatableNumericValue;
+  translateY: AnimatableNumericValue | `${number}%`;
 }
 
 interface SkewXTransform {
@@ -192,24 +174,31 @@ interface MatrixTransform {
   matrix: AnimatableNumericValue[];
 }
 
+type MaximumOneOf<T, K extends keyof T = keyof T> = K extends keyof T
+  ? {[P in K]: T[K]} & {[P in Exclude<keyof T, K>]?: never}
+  : never;
+
 export interface TransformsStyle {
   transform?:
-    | (
-        | PerpectiveTransform
-        | RotateTransform
-        | RotateXTransform
-        | RotateYTransform
-        | RotateZTransform
-        | ScaleTransform
-        | ScaleXTransform
-        | ScaleYTransform
-        | TranslateXTransform
-        | TranslateYTransform
-        | SkewXTransform
-        | SkewYTransform
-        | MatrixTransform
-      )[]
+    | MaximumOneOf<
+        PerspectiveTransform &
+          RotateTransform &
+          RotateXTransform &
+          RotateYTransform &
+          RotateZTransform &
+          ScaleTransform &
+          ScaleXTransform &
+          ScaleYTransform &
+          TranslateXTransform &
+          TranslateYTransform &
+          SkewXTransform &
+          SkewYTransform &
+          MatrixTransform
+      >[]
+    | string
     | undefined;
+  transformOrigin?: Array<string | number> | string | undefined;
+
   /**
    * @deprecated Use matrix in transform prop instead.
    */
@@ -292,7 +281,6 @@ export type FontVariant =
   | 'oldstyle-nums'
   | 'lining-nums'
   | 'tabular-nums'
-  | 'proportional-nums'
   | 'common-ligatures'
   | 'no-common-ligatures'
   | 'discretionary-ligatures'
@@ -300,7 +288,28 @@ export type FontVariant =
   | 'historical-ligatures'
   | 'no-historical-ligatures'
   | 'contextual'
-  | 'no-contextual';
+  | 'no-contextual'
+  | 'proportional-nums'
+  | 'stylistic-one'
+  | 'stylistic-two'
+  | 'stylistic-three'
+  | 'stylistic-four'
+  | 'stylistic-five'
+  | 'stylistic-six'
+  | 'stylistic-seven'
+  | 'stylistic-eight'
+  | 'stylistic-nine'
+  | 'stylistic-ten'
+  | 'stylistic-eleven'
+  | 'stylistic-twelve'
+  | 'stylistic-thirteen'
+  | 'stylistic-fourteen'
+  | 'stylistic-fifteen'
+  | 'stylistic-sixteen'
+  | 'stylistic-seventeen'
+  | 'stylistic-eighteen'
+  | 'stylistic-nineteen'
+  | 'stylistic-twenty';
 export interface TextStyleIOS extends ViewStyle {
   fontVariant?: FontVariant[] | undefined;
   textDecorationColor?: ColorValue | undefined;
@@ -337,6 +346,25 @@ export interface TextStyle extends TextStyleIOS, TextStyleAndroid, ViewStyle {
     | '700'
     | '800'
     | '900'
+    | 100
+    | 200
+    | 300
+    | 400
+    | 500
+    | 600
+    | 700
+    | 800
+    | 900
+    | 'ultralight'
+    | 'thin'
+    | 'light'
+    | 'medium'
+    | 'regular'
+    | 'semibold'
+    | 'condensedBold'
+    | 'condensed'
+    | 'heavy'
+    | 'black'
     | undefined;
   letterSpacing?: number | undefined;
   lineHeight?: number | undefined;
@@ -353,7 +381,7 @@ export interface TextStyle extends TextStyleIOS, TextStyleAndroid, ViewStyle {
   textShadowOffset?: {width: number; height: number} | undefined;
   textShadowRadius?: number | undefined;
   textTransform?: 'none' | 'capitalize' | 'uppercase' | 'lowercase' | undefined;
-  testID?: string | undefined;
+  userSelect?: 'auto' | 'none' | 'text' | 'contain' | 'all' | undefined;
 }
 
 /**

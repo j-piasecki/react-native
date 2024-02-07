@@ -8,11 +8,13 @@
 #import "RCTComponentViewFactory.h"
 
 #import <React/RCTAssert.h>
+#import <React/RCTBridge.h>
 #import <React/RCTConversions.h>
+#import <React/RCTLog.h>
 
-#import <butter/map.h>
-#import <butter/set.h>
 #import <shared_mutex>
+#import <unordered_map>
+#import <unordered_set>
 
 #import <react/renderer/componentregistry/ComponentDescriptorProviderRegistry.h>
 #import <react/renderer/componentregistry/componentNameByReactViewName.h>
@@ -45,11 +47,11 @@ using namespace facebook::react;
 // Allow JS runtime to register native components as needed. For static view configs.
 void RCTInstallNativeComponentRegistryBinding(facebook::jsi::Runtime &runtime)
 {
-  auto hasComponentProvider = [](std::string const &name) -> bool {
+  auto hasComponentProvider = [](const std::string &name) -> bool {
     return [[RCTComponentViewFactory currentComponentViewFactory]
         registerComponentIfPossible:componentNameByReactViewName(name)];
   };
-  NativeComponentRegistryBinding::install(runtime, std::move(hasComponentProvider));
+  bindHasComponentProvider(runtime, std::move(hasComponentProvider));
 }
 
 static Class<RCTComponentViewProtocol> RCTComponentViewClassWithName(const char *componentName)
@@ -58,8 +60,8 @@ static Class<RCTComponentViewProtocol> RCTComponentViewClassWithName(const char 
 }
 
 @implementation RCTComponentViewFactory {
-  butter::map<ComponentHandle, RCTComponentViewClassDescriptor> _componentViewClasses;
-  butter::set<std::string> _registeredComponentsNames;
+  std::unordered_map<ComponentHandle, RCTComponentViewClassDescriptor> _componentViewClasses;
+  std::unordered_set<std::string> _registeredComponentsNames;
   ComponentDescriptorProviderRegistry _providerRegistry;
   std::shared_mutex _mutex;
 }
@@ -94,16 +96,24 @@ static Class<RCTComponentViewProtocol> RCTComponentViewClassWithName(const char 
         (bool)class_respondsToSelector(viewClass, @selector(mountingTransactionWillMount:withSurfaceTelemetry:)),
     .observesMountingTransactionDidMount =
         (bool)class_respondsToSelector(viewClass, @selector(mountingTransactionDidMount:withSurfaceTelemetry:)),
+    .shouldBeRecycled = [viewClass respondsToSelector:@selector(shouldBeRecycled)]
+        ? (bool)[viewClass performSelector:@selector(shouldBeRecycled)]
+        : true,
   };
 #pragma clang diagnostic pop
 }
 
-- (BOOL)registerComponentIfPossible:(std::string const &)name
+- (BOOL)registerComponentIfPossible:(const std::string &)name
 {
   if (_registeredComponentsNames.find(name) != _registeredComponentsNames.end()) {
     // Component has already been registered.
     return YES;
   }
+
+  // Paper name: we prepare this variables to warn the user
+  // when the component is registered in both Fabric and in the
+  // interop layer, so they can remove that
+  NSString *componentNameString = RCTNSStringFromString(name);
 
   // Fallback 1: Call provider function for component view class.
   Class<RCTComponentViewProtocol> klass = RCTComponentViewClassWithName(name.c_str());
@@ -112,9 +122,21 @@ static Class<RCTComponentViewProtocol> RCTComponentViewClassWithName(const char 
     return YES;
   }
 
-  // Fallback 2: Try to use Paper Interop.
-  NSString *componentNameString = RCTNSStringFromString(name);
-  if ([RCTLegacyViewManagerInteropComponentView isSupported:componentNameString]) {
+  // Fallback 2: Ask the provider and check in the dictionary provided
+  if (self.thirdPartyFabricComponentsProvider) {
+    // Test whether a provider has been passed to avoid potentially expensive conversions
+    // between C++ and ObjC strings.
+    NSString *objcName = [NSString stringWithCString:name.c_str() encoding:NSUTF8StringEncoding];
+    klass = self.thirdPartyFabricComponentsProvider.thirdPartyFabricComponents[objcName];
+    if (klass) {
+      [self registerComponentViewClass:klass];
+      return YES;
+    }
+  }
+
+  // Fallback 3: Try to use Paper Interop.
+  // TODO(T174674274): Implement lazy loading of legacy view managers in the new architecture.
+  if (RCTFabricInteropLayerEnabled() && [RCTLegacyViewManagerInteropComponentView isSupported:componentNameString]) {
     RCTLogNewArchitectureValidation(
         RCTNotAllowedInBridgeless,
         self,
@@ -136,7 +158,7 @@ static Class<RCTComponentViewProtocol> RCTComponentViewClassWithName(const char 
     return YES;
   }
 
-  // Fallback 3: use <UnimplementedView> if component doesn't exist.
+  // Fallback 4: use <UnimplementedView> if component doesn't exist.
   auto flavor = std::make_shared<std::string const>(name);
   auto componentName = ComponentName{flavor->c_str()};
   auto componentHandle = reinterpret_cast<ComponentHandle>(componentName);
@@ -168,7 +190,7 @@ static Class<RCTComponentViewProtocol> RCTComponentViewClassWithName(const char 
   }
 }
 
-- (void)_addDescriptorToProviderRegistry:(ComponentDescriptorProvider const &)provider
+- (void)_addDescriptorToProviderRegistry:(const ComponentDescriptorProvider &)provider
 {
   _registeredComponentsNames.insert(provider.name);
   _providerRegistry.add(provider);
@@ -192,6 +214,7 @@ static Class<RCTComponentViewProtocol> RCTComponentViewClassWithName(const char 
       .view = [viewClass new],
       .observesMountingTransactionWillMount = componentViewClassDescriptor.observesMountingTransactionWillMount,
       .observesMountingTransactionDidMount = componentViewClassDescriptor.observesMountingTransactionDidMount,
+      .shouldBeRecycled = componentViewClassDescriptor.shouldBeRecycled,
   };
 }
 

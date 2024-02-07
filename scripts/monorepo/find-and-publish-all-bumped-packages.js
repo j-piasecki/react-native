@@ -7,14 +7,24 @@
  * @format
  */
 
-const path = require('path');
-const {spawnSync} = require('child_process');
-
+const {publishPackage} = require('../npm-utils');
 const {PUBLISH_PACKAGES_TAG} = require('./constants');
 const forEachPackage = require('./for-each-package');
+const {spawnSync} = require('child_process');
+const path = require('path');
 
 const ROOT_LOCATION = path.join(__dirname, '..', '..');
 const NPM_CONFIG_OTP = process.env.NPM_CONFIG_OTP;
+
+function getTagsFromCommitMessage(msg) {
+  // ex message we're trying to parse tags out of
+  // `_some_message_here_${PUBLISH_PACKAGES_TAG}&tagA&tagB\n`;
+  return msg
+    .substring(msg.indexOf(PUBLISH_PACKAGES_TAG))
+    .trim()
+    .split('&')
+    .slice(1);
+}
 
 const findAndPublishAllBumpedPackages = () => {
   console.log('Traversing all packages inside /packages...');
@@ -101,19 +111,17 @@ const findAndPublishAllBumpedPackages = () => {
         );
       }
 
-      const npmOTPFlag = NPM_CONFIG_OTP ? `--otp ${NPM_CONFIG_OTP}` : '';
+      const tags = getTagsFromCommitMessage(commitMessage);
 
-      const {status, stderr} = spawnSync('npm', ['publish', `${npmOTPFlag}`], {
-        cwd: packageAbsolutePath,
-        shell: true,
-        stdio: 'pipe',
-        encoding: 'utf-8',
+      const result = publishPackage(packageAbsolutePath, {
+        tags,
+        otp: NPM_CONFIG_OTP,
       });
-      if (status !== 0) {
+      if (result.code !== 0) {
         console.log(
-          `\u274c Failed to publish version ${nextVersion} of ${packageManifest.name}. npm publish exited with code ${status}:`,
+          `\u274c Failed to publish version ${nextVersion} of ${packageManifest.name}. npm publish exited with code ${result.code}:`,
         );
-        console.log(stderr);
+        console.log(result.stderr);
 
         process.exit(1);
       } else {
@@ -127,4 +135,11 @@ const findAndPublishAllBumpedPackages = () => {
   process.exit(0);
 };
 
-findAndPublishAllBumpedPackages();
+if (require.main === module) {
+  findAndPublishAllBumpedPackages();
+}
+
+module.exports = {
+  findAndPublishAllBumpedPackages,
+  getTagsFromCommitMessage,
+};

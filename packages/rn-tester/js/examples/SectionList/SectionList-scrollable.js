@@ -10,32 +10,31 @@
 
 'use strict';
 import type {Item} from '../../components/ListExampleShared';
-const RNTesterPage = require('../../components/RNTesterPage');
-const React = require('react');
-
-const infoLog = require('react-native/Libraries/Utilities/infoLog');
 
 const {
-  HeaderComponent,
   FooterComponent,
+  HeaderComponent,
   ItemComponent,
   PlainInput,
   SeparatorComponent,
   Spindicator,
-  genItemData,
+  genNewerItems,
   pressItem,
   renderSmallSwitchOption,
   renderStackedItem,
 } = require('../../components/ListExampleShared');
+const RNTesterPage = require('../../components/RNTesterPage');
+const React = require('react');
 const {
   Alert,
   Animated,
   Button,
+  SectionList,
   StyleSheet,
   Text,
   View,
-  SectionList,
 } = require('react-native');
+const infoLog = require('react-native/Libraries/Utilities/infoLog');
 
 const VIEWABILITY_CONFIG = {
   minimumViewTime: 3000,
@@ -157,6 +156,16 @@ const onScrollToIndexFailed = (info: {
    */
 };
 
+// $FlowFixMe[missing-local-annot]
+const ItemSeparatorComponent = info => (
+  <CustomSeparatorComponent {...info} text="ITEM SEPARATOR" />
+);
+
+// $FlowFixMe[missing-local-annot]
+const SectionSeparatorComponent = info => (
+  <CustomSeparatorComponent {...info} text="SECTION SEPARATOR" />
+);
+
 export function SectionList_scrollable(Props: {
   ...
 }): React.Element<typeof RNTesterPage> {
@@ -170,7 +179,7 @@ export function SectionList_scrollable(Props: {
   const [logViewable, setLogViewable] = React.useState(false);
   const [debug, setDebug] = React.useState(false);
   const [inverted, setInverted] = React.useState(false);
-  const [data, setData] = React.useState(genItemData(1000));
+  const [data, setData] = React.useState(genNewerItems(1000));
 
   const filterRegex = new RegExp(String(filterText), 'i');
   const filter = (item: Item) =>
@@ -281,14 +290,8 @@ export function SectionList_scrollable(Props: {
         ref={ref}
         ListHeaderComponent={HeaderComponent}
         ListFooterComponent={FooterComponent}
-        // $FlowFixMe[missing-local-annot]
-        SectionSeparatorComponent={info => (
-          <CustomSeparatorComponent {...info} text="SECTION SEPARATOR" />
-        )}
-        // $FlowFixMe[missing-local-annot]
-        ItemSeparatorComponent={info => (
-          <CustomSeparatorComponent {...info} text="ITEM SEPARATOR" />
-        )}
+        SectionSeparatorComponent={SectionSeparatorComponent}
+        ItemSeparatorComponent={ItemSeparatorComponent}
         accessibilityRole="list"
         debug={debug}
         inverted={inverted}

@@ -8,16 +8,15 @@
  * @format
  */
 
+import * as React from 'react';
 import {
-  Pressable,
   Button,
+  Pressable,
   SectionList,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-
-import * as React from 'react';
 
 const DATA = [
   {
@@ -103,6 +102,8 @@ const SectionListBaseExample: React.AbstractComponent<
         keyExtractor={(item, index) => item + index}
         style={styles.list}
         renderItem={Item}
+        /* $FlowFixMe[prop-missing] Error revealed after improved builtin React
+         * utility types */
         renderSectionHeader={({section: {title}}) => (
           <Text style={styles.header}>{title}</Text>
         )}

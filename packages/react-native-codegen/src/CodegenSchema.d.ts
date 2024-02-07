@@ -113,7 +113,11 @@ export type EventTypeAnnotation =
   | FloatTypeAnnotation
   | Int32TypeAnnotation
   | StringEnumTypeAnnotation
-  | ObjectTypeAnnotation<EventTypeAnnotation>;
+  | ObjectTypeAnnotation<EventTypeAnnotation>
+  | {
+    readonly type: 'ArrayTypeAnnotation';
+    readonly elementType: EventTypeAnnotation
+  };
 
 export type PropTypeAnnotation =
   | {
@@ -195,7 +199,16 @@ export type CommandParamTypeAnnotation =
   | Int32TypeAnnotation
   | DoubleTypeAnnotation
   | FloatTypeAnnotation
-  | StringTypeAnnotation;
+  | StringTypeAnnotation
+  | {
+    readonly type: 'ArrayTypeAnnotation';
+    readonly elementType:
+    | Int32TypeAnnotation
+    | DoubleTypeAnnotation
+    | FloatTypeAnnotation
+    | BooleanTypeAnnotation
+    | StringTypeAnnotation
+  };
 
 export interface ReservedTypeAnnotation {
   readonly type: 'ReservedTypeAnnotation';
@@ -291,6 +304,7 @@ export interface NativeModuleEnumDeclarationWithMembers {
 
 export interface NativeModuleGenericObjectTypeAnnotation {
   readonly type: 'GenericObjectTypeAnnotation';
+  readonly dictionaryValueType?: Nullable<NativeModuleTypeAnnotation> | undefined;
 }
 
 export interface NativeModuleTypeAliasTypeAnnotation {
@@ -352,4 +366,3 @@ export type NativeModuleReturnOnlyTypeAnnotation =
   | NativeModuleFunctionTypeAnnotation
   | NativeModulePromiseTypeAnnotation
   | VoidTypeAnnotation;
-

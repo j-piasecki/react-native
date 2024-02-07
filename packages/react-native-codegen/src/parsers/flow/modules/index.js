@@ -13,38 +13,35 @@
 import type {
   NamedShape,
   NativeModuleAliasMap,
-  NativeModuleEnumMap,
   NativeModuleBaseTypeAnnotation,
+  NativeModuleEnumMap,
   NativeModuleTypeAnnotation,
   Nullable,
 } from '../../../CodegenSchema';
-
 import type {Parser} from '../../parser';
 import type {ParserErrorCapturer, TypeDeclarationMap} from '../../utils';
 
-const {resolveTypeAnnotation} = require('../utils');
 const {
-  unwrapNullable,
-  wrapNullable,
+  UnsupportedGenericParserError,
+  UnsupportedTypeAnnotationParserError,
+} = require('../../errors');
+const {
   assertGenericTypeAnnotationHasExactlyOneTypeParameter,
   parseObjectProperty,
+  unwrapNullable,
+  wrapNullable,
 } = require('../../parsers-commons');
 const {
   emitArrayType,
+  emitCommonTypes,
+  emitDictionary,
   emitFunction,
-  emitGenericObject,
   emitPromise,
   emitRootTag,
   emitUnion,
-  emitCommonTypes,
   typeAliasResolution,
   typeEnumResolution,
 } = require('../../parsers-primitives');
-
-const {
-  UnsupportedTypeAnnotationParserError,
-  UnsupportedGenericParserError,
-} = require('../../errors');
 
 function translateTypeAnnotation(
   hasteModuleName: string,
@@ -59,12 +56,13 @@ function translateTypeAnnotation(
   cxxOnly: boolean,
   parser: Parser,
 ): Nullable<NativeModuleTypeAnnotation> {
+  const resolveTypeAnnotationFN = parser.getResolveTypeAnnotationFN();
   const {nullable, typeAnnotation, typeResolutionStatus} =
-    resolveTypeAnnotation(flowTypeAnnotation, types);
+    resolveTypeAnnotationFN(flowTypeAnnotation, types, parser);
 
   switch (typeAnnotation.type) {
     case 'GenericTypeAnnotation': {
-      switch (typeAnnotation.id.name) {
+      switch (parser.getTypeAnnotationName(typeAnnotation)) {
         case 'RootTag': {
           return emitRootTag(nullable);
         }
@@ -152,7 +150,7 @@ function translateTypeAnnotation(
           // check the property type to prevent developers from using unsupported types
           // the return value from `translateTypeAnnotation` is unused
           const propertyType = indexers[0].value;
-          translateTypeAnnotation(
+          const valueType = translateTypeAnnotation(
             hasteModuleName,
             propertyType,
             types,
@@ -163,7 +161,7 @@ function translateTypeAnnotation(
             parser,
           );
           // no need to do further checking
-          return emitGenericObject(nullable);
+          return emitDictionary(nullable, valueType);
         }
       }
 
@@ -178,6 +176,7 @@ function translateTypeAnnotation(
             property => {
               return tryParse(() => {
                 return parseObjectProperty(
+                  flowTypeAnnotation,
                   property,
                   hasteModuleName,
                   types,
