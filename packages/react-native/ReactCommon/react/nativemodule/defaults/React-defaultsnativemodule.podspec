@@ -48,4 +48,5 @@ Pod::Spec.new do |s|
   s.dependency "React-featureflagsnativemodule"
   s.dependency "React-microtasksnativemodule"
   s.dependency "React-idlecallbacksnativemodule"
+  s.dependency "React-mutationobservernativemodule"
 end

@@ -1,205 +1,231 @@
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- * @format
- * @flow strict-local
- */
+import { tweets as tweetsData } from './tweets';
+import TweetCell from './TweetCell';
+import {
+  RecyclerView,
+} from './RecyclerView';
+import React, {useContext, useEffect, useLayoutEffect, useRef, useState} from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
+  ViewabilityConfig,
+} from 'react-native';
 
-import type ReadOnlyNode from 'react-native/src/private/webapis/dom/nodes/ReadOnlyNode';
-import type NodeList from 'react-native/src/private/webapis/dom/oldstylecollections/NodeList';
-
-import {RNTesterThemeContext} from '../../components/RNTesterTheme';
-import * as React from 'react';
-import {type ElementRef, useContext, useEffect, useRef, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
-import ReadOnlyElement from 'react-native/src/private/webapis/dom/nodes/ReadOnlyElement';
-import MutationObserver from 'react-native/src/private/webapis/mutationobserver/MutationObserver';
-
-export const name = 'MutationObserver Example';
-export const title = name;
-export const description =
-  '- Tap on elements to append a child.\n- Long tap on elements to remove them.';
-
-export function render(): React.Node {
-  return <MutationObserverExample />;
+export function render() {
+  return <Test />;
+  // return <Twitter />;
 }
 
-const nextIdByPrefix: Map<string, number> = new Map();
-function generateId(prefix: string): string {
-  let nextId = nextIdByPrefix.get(prefix);
-  if (nextId == null) {
-    nextId = 1;
-  }
-  nextIdByPrefix.set(prefix, nextId + 1);
-  return prefix + nextId;
-}
+const colors = ['red', 'green', 'blue'];
 
-const rootId = generateId('example-item-');
-
-function useTemporaryValue<T>(duration: number = 2000): [?T, (?T) => void] {
-  const [value, setValue] = useState<?T>(null);
+function Item(props) {
+  const [expanded, setExpanded] = useState(false);
+  const viewRef = useRef(null);
+console.log('Item render', props.index);
+queueMicrotask(() => console.log('Item render microtask', props.index));
+  useLayoutEffect(() => {
+    queueMicrotask(() => console.log('Item layoyt microtask', props.index));
+    viewRef.current.measureLayout(viewRef.current, (x, y, width, height) => {
+      props.setSize(props.index, height);
+      console.log('useLayoutEffect measure', props.index);
+    });
+    console.log('useLayoutEffect', props.index);
+  }, []);
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setValue(null);
-    }, duration);
-    return () => clearTimeout(timeoutId);
-    // we need to set the timer every time the value changes
-  }, [duration, value]);
-
-  return [value, setValue];
-}
-
-function MutationObserverExample(): React.Node {
-  const parentViewRef = useRef<?ElementRef<typeof View>>(null);
-  const [showExample, setShowExample] = useState(true);
-  const theme = useContext(RNTesterThemeContext);
-  const [message, setMessage] = useTemporaryValue<string>();
-
-  useEffect(() => {
-    const parentNode = parentViewRef.current;
-    if (!parentNode) {
-      return;
-    }
-
-    const mutationObserver = new MutationObserver(records => {
-      const messages = [];
-      records.forEach(record => {
-        if (record.addedNodes.length > 0) {
-          console.log(
-            'MutationObserverExample: added nodes',
-            nodeListToString(record.addedNodes),
-          );
-          messages.push(`Added nodes: ${nodeListToString(record.addedNodes)}`);
-        }
-        if (record.removedNodes.length > 0) {
-          console.log(
-            'MutationObserverExample: removed nodes',
-            nodeListToString(record.removedNodes),
-          );
-          messages.push(
-            `Removed nodes: ${nodeListToString(record.removedNodes)}`,
-          );
-        }
+    const observer = new MutationObserver(() => {
+      queueMicrotask(() => console.log('Item mutation microtask', props.index));
+      console.log('MutationObserver', props.index);
+      viewRef.current.measureLayout(viewRef.current, (x, y, width, height) => {
+        props.setSize(props.index, height);
+        console.log('update ref to', height, props.index);
       });
-      setMessage(messages.join(',\n'));
     });
 
-    // $FlowExpectedError[incompatible-call]
-    mutationObserver.observe(parentNode, {
+    observer.observe(viewRef.current, {
       subtree: true,
       childList: true,
     });
 
     return () => {
-      console.log('MutationObserverExample: disconnecting mutation observer');
-      mutationObserver.disconnect();
-      nextIdByPrefix.clear();
+      observer.disconnect();
     };
-  }, [setMessage]);
+  }, []);
 
-  const exampleId = showExample ? rootId : '';
+  let now = performance.now();
+  while (performance.now() - now < 100) {
+    // Do nothing for a bit...
+  }
 
   return (
-    <>
-      <ScrollView id="scroll-view">
-        <View style={styles.parent} ref={parentViewRef} id="parent">
-          {showExample ? (
-            <ExampleItem
-              label={exampleId}
-              id={exampleId}
-              onRemove={() => setShowExample(false)}
-            />
-          ) : null}
+    <Pressable onPress={() => setExpanded(!expanded)}>
+      <View ref={viewRef} style={{height: expanded ? 100 : 50, backgroundColor: props.color, position: 'absolute', top: props.position, left: 0, right: 0, opacity: 0.5}}>
+        {expanded && <Text>Expanded</Text>}
         </View>
-      </ScrollView>
-      <Text id="message" style={[styles.message, {color: theme.LabelColor}]}>
-        {message}
-      </Text>
-    </>
+    </Pressable>
   );
 }
 
-function ExampleItem(props: {
-  id: string,
-  label: string,
-  onRemove?: () => void,
-}): React.Node {
-  const theme = useContext(RNTesterThemeContext);
-  const [children, setChildren] = useState<
-    $ReadOnlyArray<[string, React.Node]>,
-  >([]);
+function Test() {
+  const [sizes, setSizes] = useState([]);
+  const [positions, setPositions] = useState([]);
+
+  function updatePositions(sizes) {
+    const newPositions = [];
+    let current = 0;
+    for (let i = 0; i < sizes.length; i++) {
+      newPositions.push(current);
+      current += sizes[i] || 0;
+    }
+    setPositions(newPositions);
+  }
+
+  useLayoutEffect(() => {
+    updatePositions(sizes);
+  }, [sizes]);
+
+  function setSize(index, size) {
+    setSizes((prev) => {
+      const newSizes = [...prev];
+      newSizes[index] = size;
+      return newSizes;
+    });
+
+    setPositions((prev) => {
+      const newPositions = [...prev];
+      for (let i = index + 1; i < newPositions.length; i++) {
+        newPositions[i] += size - sizes[index];
+      }
+      return newPositions;
+    });
+  }
+
+console.log('Test render', positions);
 
   return (
-    <View id={props.id}>
-      <Pressable
-        testID={'pressable-' + props.id}
-        style={[styles.item]}
-        onLongPress={() => {
-          props.onRemove?.();
-        }}
-        onPress={() => {
-          const id = generateId(props.label + '-');
-          setChildren(prevChildren => [
-            ...prevChildren,
-            [
-              id,
-              <ExampleItem
-                id={id}
-                key={id}
-                label={id}
-                onRemove={() => {
-                  setChildren(prevChildren2 =>
-                    prevChildren2.filter(pair => pair[0] !== id),
-                  );
-                }}
-              />,
-            ],
-          ]);
-        }}>
-        {props.label != null ? (
-          <Text
-            id={'text-' + props.id}
-            style={[styles.label, {color: theme.LabelColor}]}>
-            {props.label}
-          </Text>
-        ) : null}
-        {children.map(([id, child]) => child)}
-      </Pressable>
+    <SafeAreaView style={{flex: 1}}>
+      {colors.map((color, index) => (
+        <Item key={index} color={color} index={index} setSize={setSize} position={positions[index]} />
+      ))}
+    </SafeAreaView>
+  );
+}
+
+const Twitter = ({
+  instance,
+  blankAreaTracker,
+  CellRendererComponent,
+  disableAutoLayout,
+}) => {
+  const [refreshing, setRefreshing] = useState(false);
+  const remainingTweets = useRef([...tweetsData].splice(10, tweetsData.length));
+  const [tweets, setTweets] = useState(
+    tweetsData
+  );
+  const viewabilityConfig = useRef<ViewabilityConfig>({
+    waitForInteraction: true,
+    itemVisiblePercentThreshold: 50,
+    minimumViewTime: 1000,
+  }).current;
+
+  return (
+    <RecyclerView
+      ref={instance}
+      keyExtractor={(item) => {
+        return item.id;
+      }}
+      data={tweets}
+      renderItem={({ item }) => {
+        return <TweetCell tweet={item} />;
+      }}
+    />
+  );
+};
+
+export const Divider = () => {
+  return <View style={styles.divider} />;
+};
+
+export const Header = () => {
+  return (
+    <View style={styles.header}>
+      <Text style={styles.headerTitle}>New tweets available</Text>
     </View>
   );
-}
+};
 
-function nodeListToString(nodeList: NodeList<ReadOnlyNode>): string {
-  return [...nodeList]
-    .map(
-      node => (node instanceof ReadOnlyElement && node.id) || '<unknown-node>',
-    )
-    .join(', ');
-}
+export const Footer = ({ isLoading, isPagingEnabled }) => {
+  return (
+    <View style={styles.footer}>
+      {isLoading && isPagingEnabled ? (
+        <ActivityIndicator />
+      ) : (
+        <Text style={styles.footerTitle}>No more tweets</Text>
+      )}
+    </View>
+  );
+};
+
+export const Empty = () => {
+  const title = 'Welcome to your timeline';
+  const subTitle =
+    "It's empty now but it won't be for long. Start following peopled you'll see Tweets show up here";
+  return (
+    <View style={styles.emptyComponent} testID="EmptyComponent">
+      <Text style={styles.emptyComponentTitle}>{title}</Text>
+      <Text style={styles.emptyComponentSubtitle}>{subTitle}</Text>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
-  parent: {
+  divider: {
+    width: '100%',
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#DDD',
+  },
+  header: {
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1DA1F2',
+  },
+  footer: {
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    color: '#FFFFFF',
+    padding: 8,
+    borderRadius: 12,
+    fontSize: 12,
+  },
+  footerTitle: {
+    padding: 8,
+    borderRadius: 12,
+    fontSize: 12,
+  },
+  emptyComponentTitle: {
+    color: 'black',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  emptyComponentSubtitle: {
+    color: '#808080',
+    padding: 8,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  emptyComponent: {
+    justifyContent: 'center',
+    alignItems: 'center',
     flex: 1,
-    backgroundColor: 'white',
-  },
-  item: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    flex: 1,
-    gap: 16,
-    minHeight: 50,
-    padding: 40,
-  },
-  label: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    fontSize: 10,
-  },
-  message: {
-    padding: 10,
   },
 });
+
+export default Twitter;

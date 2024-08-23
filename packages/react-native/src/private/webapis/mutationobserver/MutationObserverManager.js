@@ -100,7 +100,9 @@ export function observe({
     return;
   }
 
-  const targetShadowNode = getShadowNode(target);
+  const targetShadowNode = target.__internalInstanceHandle.stateNode.node;
+  // const targetShadowNode = getShadowNode(target);
+
   if (targetShadowNode == null) {
     console.error(
       'MutationObserverManager: could not find reference to host node from target',

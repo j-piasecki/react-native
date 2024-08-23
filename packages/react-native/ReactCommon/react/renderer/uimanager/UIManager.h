@@ -197,6 +197,8 @@ class UIManager final : public ShadowTreeDelegate {
   const ShadowTreeRegistry& getShadowTreeRegistry() const;
 
   void reportMount(SurfaceId surfaceId) const;
+    
+    bool shouldSkipCommit{};
 
  private:
   friend class UIManagerBinding;

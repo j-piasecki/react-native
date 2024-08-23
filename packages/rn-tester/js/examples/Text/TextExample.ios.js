@@ -288,7 +288,7 @@ class TextBaseLineLayoutExample extends React.Component<{}, mixed> {
     }
 
     const marker = (
-      <View style={{width: 20, height: 20, backgroundColor: 'gray'}} />
+      <View style={{width: 20, height: 2, backgroundColor: 'gray'}} />
     );
     const subtitleStyle = {fontSize: 16, marginTop: 8, fontWeight: 'bold'};
 

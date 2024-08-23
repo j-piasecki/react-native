@@ -286,7 +286,7 @@ export default class ReadOnlyNode {
   static DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC: number = 32;
 }
 
-const INSTANCE_HANDLE_KEY = Symbol('internalInstanceHandle');
+const INSTANCE_HANDLE_KEY = Symbol('__internalInstanceHandle');
 
 export function getInstanceHandle(node: ReadOnlyNode): InternalInstanceHandle {
   // $FlowExpectedError[prop-missing]
@@ -298,7 +298,7 @@ function setInstanceHandle(
   instanceHandle: InternalInstanceHandle,
 ): void {
   // $FlowExpectedError[prop-missing]
-  node[INSTANCE_HANDLE_KEY] = instanceHandle;
+  node['__internalInstanceHandle'] = instanceHandle;
 }
 
 export function getShadowNode(node: ReadOnlyNode): ?ShadowNode {

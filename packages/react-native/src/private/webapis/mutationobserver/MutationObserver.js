@@ -70,11 +70,11 @@ export default class MutationObserver {
    * triggered any longer), call `MutationObserver.disconnect()`.
    */
   observe(target: ReactNativeElement, options?: MutationObserverInit): void {
-    if (!(target instanceof ReactNativeElement)) {
-      throw new TypeError(
-        "Failed to execute 'observe' on 'MutationObserver': parameter 1 is not of type 'ReactNativeElement'.",
-      );
-    }
+    // if (!(target instanceof ReactNativeElement)) {
+    //   throw new TypeError(
+    //     "Failed to execute 'observe' on 'MutationObserver': parameter 1 is not of type 'ReactNativeElement'.",
+    //   );
+    // }
 
     // Browsers force a cast of this value to boolean
     if (Boolean(options?.childList) !== true) {
@@ -131,11 +131,11 @@ export default class MutationObserver {
   }
 
   _unobserve(target: ReactNativeElement): void {
-    if (!(target instanceof ReactNativeElement)) {
-      throw new TypeError(
-        "Failed to execute 'observe' on 'MutationObserver': parameter 1 is not of type 'ReactNativeElement'.",
-      );
-    }
+    // if (!(target instanceof ReactNativeElement)) {
+    //   throw new TypeError(
+    //     "Failed to execute 'observe' on 'MutationObserver': parameter 1 is not of type 'ReactNativeElement'.",
+    //   );
+    // }
 
     if (!this._observationTargets.has(target)) {
       return;

@@ -12,7 +12,7 @@
 #include <react/renderer/uimanager/UIManagerBinding.h>
 #include <react/renderer/uimanager/primitives.h>
 
-#include "Plugins.h"
+//#include "Plugins.h"
 
 std::shared_ptr<facebook::react::TurboModule>
 NativeMutationObserverModuleProvider(
@@ -64,6 +64,8 @@ void NativeMutationObserver::connect(
       std::move(getPublicInstanceFromInstanceHandle));
 
   auto onMutationsCallback = [&](std::vector<MutationRecord>& records) {
+      uiManager.shouldSkipCommit = true;
+      
     return onMutations(records);
   };
 

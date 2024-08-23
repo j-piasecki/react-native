@@ -9,10 +9,12 @@
  */
 
 'use strict';
-
+import setUpMutationObserver from 'react-native/src/private/setup/setUpMutationObserver';
 import type {RNTesterModuleInfo} from '../types/RNTesterTypes';
 
 import ReactNativeFeatureFlags from 'react-native/Libraries/ReactNative/ReactNativeFeatureFlags';
+
+setUpMutationObserver();
 
 const Components: Array<RNTesterModuleInfo> = [
   {

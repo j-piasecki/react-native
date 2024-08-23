@@ -288,8 +288,13 @@ void Scheduler::uiManagerDidFinishTransaction(
     if (runtimeScheduler && !mountSynchronously) {
       runtimeScheduler->scheduleRenderingUpdate(
           [delegate = delegate_,
+           uiManager = uiManager_,
            mountingCoordinator = std::move(mountingCoordinator)]() {
-            delegate->schedulerShouldRenderTransactions(mountingCoordinator);
+               if (uiManager->shouldSkipCommit) {
+                   uiManager->shouldSkipCommit = false;
+               } else {
+                   delegate->schedulerShouldRenderTransactions(mountingCoordinator);
+               }
           });
     } else {
       delegate_->schedulerShouldRenderTransactions(mountingCoordinator);

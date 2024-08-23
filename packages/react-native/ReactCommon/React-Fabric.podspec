@@ -200,6 +200,14 @@ Pod::Spec.new do |s|
       sss.exclude_files        = "react/renderer/observers/events/tests"
       sss.header_dir           = "react/renderer/observers/events"
     end
+
+    ss.subspec "mutation" do |sss|
+      sss.dependency             folly_dep_name, folly_version
+      sss.compiler_flags       = folly_compiler_flags
+      sss.source_files         = "react/renderer/observers/mutation/**/*.{m,mm,cpp,h}"
+      sss.exclude_files        = "react/renderer/observers/mutation/tests"
+      sss.header_dir           = "react/renderer/observers/mutation"
+    end
   end
 
   s.subspec "templateprocessor" do |ss|
