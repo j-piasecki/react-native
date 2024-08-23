@@ -25,6 +25,11 @@ class YogaLayoutableShadowNode : public LayoutableShadowNode {
  public:
   using Shared = std::shared_ptr<const YogaLayoutableShadowNode>;
   using ListOfShared = std::vector<Shared>;
+    
+    struct Child {
+        Shared shadowChild;
+        Shared yogaChild;
+    };
 
 #pragma mark - Constructors
 
@@ -110,6 +115,8 @@ class YogaLayoutableShadowNode : public LayoutableShadowNode {
    * -> back to owned because its parent is allocated at the same address.
    */
   void updateYogaChildrenOwnersIfNeeded();
+    
+    std::vector<Child> buildFlattenedChildrenList(const YogaLayoutableShadowNode::Shared& node) const;
 
   /*
    * Return true if child's yogaNode's owner is this->yogaNode_. Otherwise
@@ -220,7 +227,7 @@ class YogaLayoutableShadowNode : public LayoutableShadowNode {
   /*
    * List of children which derive from YogaLayoutableShadowNode
    */
-  ListOfShared yogaLayoutableChildren_;
+  std::vector<Child> yogaLayoutableChildren_;
 
   /*
    * Whether the full Yoga subtree of this Node has been configured.
