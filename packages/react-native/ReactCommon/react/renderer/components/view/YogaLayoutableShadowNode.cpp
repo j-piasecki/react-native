@@ -427,9 +427,19 @@ void YogaLayoutableShadowNode::updateYogaChildren() {
     }
     
   ensureUnsealed();
+    
+    std::vector<YogaLayoutableShadowNode::Child> newChildren;
+    
+    for (auto& child : getChildren()) {
+      if (auto layoutableChild = std::dynamic_pointer_cast<const YogaLayoutableShadowNode>(child)) {
+          for (const auto& child : buildFlattenedChildrenList(layoutableChild)) {
+              newChildren.push_back(child);
+          }
+      }
+    }
 
   bool isClean = !yogaNode_.isDirty() &&
-      getChildren().size() == yogaNode_.getChildren().size();
+      newChildren.size() == yogaNode_.getChildren().size();
 
   auto oldYogaChildren =
       isClean ? yogaNode_.getChildren() : std::vector<yoga::Node*>{};
@@ -441,18 +451,20 @@ void YogaLayoutableShadowNode::updateYogaChildren() {
     if (auto yogaLayoutableChild =
             std::dynamic_pointer_cast<const YogaLayoutableShadowNode>(
                 getChildren()[i])) {
+      auto startIndex = yogaLayoutableChildren_.size();
       appendYogaChild(yogaLayoutableChild);
       adoptYogaChild(i);
-// more than one child can be appended at once due to flattening
-//      if (isClean) {
-//        auto yogaChildIndex = yogaLayoutableChildren_.size() - 1;
-//        auto& oldYogaChildNode = *oldYogaChildren.at(yogaChildIndex);
-//        auto& newYogaChildNode =
-//            yogaLayoutableChildren_.at(yogaChildIndex).yogaChild->yogaNode_;
-//
-//        isClean = isClean && !newYogaChildNode.isDirty() &&
-//            (newYogaChildNode.style() == oldYogaChildNode.style());
-//      }
+
+      if (isClean) {
+          for (size_t yogaChildIndex = startIndex; yogaChildIndex < yogaLayoutableChildren_.size(); yogaChildIndex++) {
+              auto& oldYogaChildNode = *oldYogaChildren.at(yogaChildIndex);
+              auto& newYogaChildNode =
+                  yogaLayoutableChildren_.at(yogaChildIndex).yogaChild->yogaNode_;
+      
+              isClean = isClean && !newYogaChildNode.isDirty() &&
+                  (newYogaChildNode.style() == oldYogaChildNode.style());
+          }
+      }
     }
   }
 
