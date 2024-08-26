@@ -71,6 +71,7 @@ YogaLayoutableShadowNode::YogaLayoutableShadowNode(
     : LayoutableShadowNode(fragment, family, traits),
       yogaConfig_(FabricDefaultYogaLog),
       yogaNode_(&initializeYogaConfig(yogaConfig_)) {
+  initialize();
   yogaNode_.setContext(this);
 
   if (getTraits().check(ShadowNodeTraits::Trait::MeasurableYogaNode)) {
@@ -113,6 +114,8 @@ YogaLayoutableShadowNode::YogaLayoutableShadowNode(
               .yogaNode_.isDirty() == yogaNode_.isDirty() &&
       "Yoga node must inherit dirty flag.");
 #endif
+                        
+  initialize();
 
   if (!getTraits().check(ShadowNodeTraits::Trait::LeafYogaNode)) {
     for (auto& child : getChildren()) {
@@ -161,6 +164,14 @@ YogaLayoutableShadowNode::YogaLayoutableShadowNode(
   }
 
   ensureConsistency();
+}
+
+void YogaLayoutableShadowNode::initialize() {
+    // too early to be set on yoga node?
+    if (std::static_pointer_cast<const YogaStylableProps>(getProps())->yogaStyle.display() == yoga::Display::Contents) {
+        traits_.unset(ShadowNodeTraits::FormsStackingContext);
+        traits_.unset(ShadowNodeTraits::FormsView);
+    }
 }
 
 void YogaLayoutableShadowNode::cleanLayout() {
@@ -290,6 +301,10 @@ void YogaLayoutableShadowNode::replaceChild(
     size_t suggestedIndex) {
   LayoutableShadowNode::replaceChild(oldChild, newChild, suggestedIndex);
 
+    if (yogaNode_.style().display() == yoga::Display::Contents) {
+        return;
+    }
+    
   ensureUnsealed();
   ensureYogaChildrenLookFine();
 
@@ -365,7 +380,7 @@ std::vector<YogaLayoutableShadowNode::Child> YogaLayoutableShadowNode::buildFlat
     if (node->yogaNode_.style().display() == yoga::Display::Contents) {
         for (const auto& childNode : node->getChildren()) {
             if (const auto& layoutableChildNode = std::dynamic_pointer_cast<const YogaLayoutableShadowNode>(childNode)) {
-                if (layoutableChildNode->layoutMetrics_.displayType == DisplayType::Contents) {
+                if (layoutableChildNode->yogaNode_.style().display() == yoga::Display::Contents) {
                     const auto flattenedChildren = layoutableChildNode->buildFlattenedChildrenList(layoutableChildNode);
                     
                     result.reserve(result.size() + flattenedChildren.size());
