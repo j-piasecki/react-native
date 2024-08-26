@@ -71,6 +71,11 @@ void ViewShadowNode::initialize() noexcept {
       !viewProps.testId.empty() || !viewProps.boxShadow.empty() ||
       !viewProps.backgroundImage.empty() ||
       HostPlatformViewTraitsInitializer::formsView(viewProps);
+    
+    if (viewProps.yogaStyle.display() == yoga::Display::Contents) {
+        formsStackingContext = false;
+        formsView = false;
+    }
 
   if (formsView) {
     traits_.set(ShadowNodeTraits::Trait::FormsView);
