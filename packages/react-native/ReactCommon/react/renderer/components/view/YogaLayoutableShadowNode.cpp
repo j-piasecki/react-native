@@ -235,7 +235,9 @@ void YogaLayoutableShadowNode::adoptYogaChild(size_t index) {
     // The child node is not owned.
       auto flattenedChildren = buildFlattenedChildrenList(std::static_pointer_cast<const YogaLayoutableShadowNode>(getChildren().at(index)));
       for (const auto& child : flattenedChildren) {
-          child.yogaChild->yogaNode_.setOwner(&yogaNode_);
+          if (&*child.yogaChild == &*child.shadowChild) {
+              child.yogaChild->yogaNode_.setOwner(&yogaNode_);
+          }
       }
     // At this point the child yoga node must be already inserted by the caller.
     // react_native_assert(layoutableChildNode.yogaNode_.isDirty());
@@ -348,7 +350,9 @@ void YogaLayoutableShadowNode::replaceChild(
         yogaLayoutableChildren_.clear();
         
         for (const auto& child : flattenedChildren) {
-            child.yogaChild->yogaNode_.setOwner(&yogaNode_);
+            if (child.yogaChild->yogaNode_.getOwner() == nullptr) {
+                child.yogaChild->yogaNode_.setOwner(&yogaNode_);
+            }
         }
         
         auto index = 0;
@@ -621,7 +625,8 @@ YogaLayoutableShadowNode& YogaLayoutableShadowNode::cloneChildInPlace(
     size_t layoutableChildIndex) {
   ensureUnsealed();
 
-  const auto& childNode = *yogaLayoutableChildren_[layoutableChildIndex].shadowChild;
+  const auto& child = yogaLayoutableChildren_[layoutableChildIndex];
+  const auto& childNode = *child.shadowChild;
 
   // TODO: Why does this not use `ShadowNodeFragment::statePlaceholder()` like
   // `adoptYogaChild()`?
@@ -642,8 +647,19 @@ YogaLayoutableShadowNode& YogaLayoutableShadowNode::cloneChildInPlace(
         index++;
     }
 
+    ShadowNode* result = &*clonedChildNode;
+    
+    // entire peth will be cloned for each child
+    if (&*child.shadowChild != &*child.yogaChild) {
+        clonedChildNode = clonedChildNode->cloneTree(child.yogaChild->getFamily(), [&](const ShadowNode& oldNode) {
+            const auto clone = oldNode.clone({.state = oldNode.getState()});
+            result = &*clone;
+            return clone;
+        });
+    }
+    
   replaceChild(childNode, clonedChildNode, index);
-  return static_cast<YogaLayoutableShadowNode&>(*clonedChildNode);
+  return static_cast<YogaLayoutableShadowNode&>(*result);
 }
 
 void YogaLayoutableShadowNode::setSize(Size size) const {
@@ -799,6 +815,27 @@ void YogaLayoutableShadowNode::layout(LayoutContext layoutContext) {
     // Verifying that the Yoga node belongs to the ShadowNode.
     react_native_assert(&childNode.yogaNode_ == childYogaNode);
 
+      if (child.shadowChild->yogaNode_.style().display() == yoga::Display::Contents) {
+          auto& contentsNode = shadowNodeFromContext(&child.shadowChild->yogaNode_);
+          auto newLayoutMetrics = LayoutMetrics{};
+          newLayoutMetrics.pointScaleFactor = layoutContext.pointScaleFactor;
+          newLayoutMetrics.wasLeftAndRightSwapped =
+              layoutContext.swapLeftAndRightInRTL &&
+              newLayoutMetrics.layoutDirection == LayoutDirection::RightToLeft;
+
+// this can be called multiple times
+          // Child node's layout has changed. When a node is added to
+          // `affectedNodes`, onLayout event is called on the component. Comparing
+          // `newLayoutMetrics.frame` with `childNode.getLayoutMetrics().frame` to
+          // detect if layout has not changed is not advised, please refer to
+          // D22999891 for details.
+//          if (layoutContext.affectedNodes != nullptr) {
+//            layoutContext.affectedNodes->push_back(&childNode);
+//          }
+
+          contentsNode.setLayoutMetrics(newLayoutMetrics);
+      }
+      
     if (childYogaNode->getHasNewLayout()) {
       childYogaNode->setHasNewLayout(false);
 
