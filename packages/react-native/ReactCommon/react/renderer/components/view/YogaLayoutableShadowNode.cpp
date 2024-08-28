@@ -225,11 +225,11 @@ void YogaLayoutableShadowNode::adoptYogaChild(size_t index) {
       !getTraits().check(ShadowNodeTraits::Trait::LeafYogaNode));
 
   auto& childNode =
-      dynamic_cast<const YogaLayoutableShadowNode&>(*getChildren()[index]);
+      dynamic_cast<const YogaLayoutableShadowNode&>(*getChildren().at(index));
 
   if (childNode.yogaNode_.getOwner() == nullptr) {
     // The child node is not owned.
-      auto flattenedChildren = buildFlattenedChildrenList(std::static_pointer_cast<const YogaLayoutableShadowNode>(getChildren()[index]));
+      auto flattenedChildren = buildFlattenedChildrenList(std::static_pointer_cast<const YogaLayoutableShadowNode>(getChildren().at(index)));
       for (const auto& child : flattenedChildren) {
           if (&*child.yogaChild == &*child.shadowChild) {
               child.yogaChild->yogaNode_.setOwner(&yogaNode_);
@@ -480,7 +480,7 @@ void YogaLayoutableShadowNode::updateYogaChildren() {
           for (size_t yogaChildIndex = startIndex; yogaChildIndex < yogaLayoutableChildren_.size(); yogaChildIndex++) {
               auto& oldYogaChildNode = *oldYogaChildren.at(yogaChildIndex);
               auto& newYogaChildNode =
-                  yogaLayoutableChildren_[yogaChildIndex].yogaChild->yogaNode_;
+                  yogaLayoutableChildren_.at(yogaChildIndex).yogaChild->yogaNode_;
       
               isClean = isClean && !newYogaChildNode.isDirty() &&
                   (newYogaChildNode.style() == oldYogaChildNode.style());
@@ -642,7 +642,7 @@ YogaLayoutableShadowNode& YogaLayoutableShadowNode::cloneChildInPlace(
     size_t layoutableChildIndex) {
   ensureUnsealed();
 
-  const auto& child = yogaLayoutableChildren_[layoutableChildIndex];
+  const auto& child = yogaLayoutableChildren_.at(layoutableChildIndex);
   const auto& childNode = *child.shadowChild;
 
   // TODO: Why does this not use `ShadowNodeFragment::statePlaceholder()` like
@@ -851,7 +851,7 @@ void YogaLayoutableShadowNode::layout(LayoutContext layoutContext) {
           auto& contentsNode = shadowNodeFromContext(&child.shadowChild->yogaNode_);
           contentsNode.setContentsLayoutMetrics(layoutContext);
       }
-      
+
     if (childYogaNode->getHasNewLayout()) {
       childYogaNode->setHasNewLayout(false);
 
