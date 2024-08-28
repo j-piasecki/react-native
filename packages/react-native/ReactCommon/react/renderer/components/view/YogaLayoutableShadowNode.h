@@ -120,6 +120,8 @@ class YogaLayoutableShadowNode : public LayoutableShadowNode {
 
     void initialize();
     
+    void setContentsLayoutMetrics(LayoutContext layoutContext);
+    
   /*
    * Return true if child's yogaNode's owner is this->yogaNode_. Otherwise
    * returns false.

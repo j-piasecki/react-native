@@ -203,10 +203,6 @@ void YogaLayoutableShadowNode::appendYogaChild(
 
   ensureYogaChildrenLookFine();
 
-//  yogaLayoutableChildren_.push_back({
-//      .shadowChild = childNode,
-//      .yogaChild = childNode,
-//  });
     const auto flattenedChildren = buildFlattenedChildrenList(childNode);
     for (const auto& child : flattenedChildren) {
         yogaLayoutableChildren_.push_back(child);
@@ -301,7 +297,19 @@ void YogaLayoutableShadowNode::replaceChild(
     const ShadowNode& oldChild,
     const ShadowNode::Shared& newChild,
     size_t suggestedIndex) {
-  LayoutableShadowNode::replaceChild(oldChild, newChild, suggestedIndex);
+    auto ancestors = newChild->getFamily().getAncestors(*this);
+    if (ancestors.size() > 1) {
+        const auto& childToClone = getChildren()[ancestors[0].second];
+
+        auto clonedDirectChild = childToClone->cloneTree(oldChild.getFamily(), [&](const ShadowNode& node) {
+            return std::const_pointer_cast<ShadowNode>(newChild);
+        });
+        
+        LayoutableShadowNode::replaceChild(*childToClone, clonedDirectChild, suggestedIndex);
+    } else {
+        LayoutableShadowNode::replaceChild(oldChild, newChild, suggestedIndex);
+    }
+  
 
     if (yogaNode_.style().display() == yoga::Display::Contents) {
         return;
@@ -344,29 +352,28 @@ void YogaLayoutableShadowNode::replaceChild(
       react_native_assert(layoutableNewChild->yogaNode_.getOwner() == nullptr);
       layoutableNewChild->yogaNode_.setOwner(&yogaNode_);
         
-        const auto flattenedChildren = buildFlattenedChildrenList(layoutableNewChild);
+        const auto flattenedNewChildren = buildFlattenedChildrenList(layoutableNewChild);
         
         yogaNode_.setChildren({});
         yogaLayoutableChildren_.clear();
         
-        for (const auto& child : flattenedChildren) {
+        for (const auto& child : flattenedNewChildren) {
             if (child.yogaChild->yogaNode_.getOwner() == nullptr) {
                 child.yogaChild->yogaNode_.setOwner(&yogaNode_);
             }
         }
         
-        auto index = 0;
         for (auto& child : getChildren()) {
           if (auto layoutableChild = std::dynamic_pointer_cast<const YogaLayoutableShadowNode>(child)) {
               for (const auto& child : buildFlattenedChildrenList(layoutableChild)) {
                   yogaLayoutableChildren_.push_back(child);
-                  yogaNode_.insertChild(&child.yogaChild->yogaNode_, index++);
-                  
-                  if (layoutableChild->yogaNode_.style().display() == yoga::Display::Contents) {
-                      printf("AA");
-                  }
               }
           }
+        }
+        
+        auto index = 0;
+        for (auto& layoutableChild : yogaLayoutableChildren_) {
+            yogaNode_.insertChild(&layoutableChild.yogaChild->yogaNode_, index++);
         }
     } else {
         while (oldChildIter != yogaLayoutableChildren_.end() && (*oldChildIter).shadowChild.get() == &oldChild) {
@@ -388,7 +395,12 @@ std::vector<YogaLayoutableShadowNode::Child> YogaLayoutableShadowNode::buildFlat
                     const auto flattenedChildren = layoutableChildNode->buildFlattenedChildrenList(layoutableChildNode);
                     
                     result.reserve(result.size() + flattenedChildren.size());
-                    result.insert(result.end(), std::make_move_iterator(flattenedChildren.begin()), std::make_move_iterator(flattenedChildren.end()));
+                    for (const auto& childToAdd : flattenedChildren) {
+                        result.push_back({
+                            .shadowChild = node,
+                            .yogaChild = childToAdd.yogaChild,
+                        });
+                    }
                 } else {
                     result.push_back({
                         .shadowChild = node,
@@ -804,6 +816,27 @@ static EdgeInsets calculateOverflowInset(
   return overflowInset;
 }
 
+void YogaLayoutableShadowNode::setContentsLayoutMetrics(LayoutContext layoutContext) {
+    auto newLayoutMetrics = LayoutMetrics{};
+    newLayoutMetrics.pointScaleFactor = layoutContext.pointScaleFactor;
+    newLayoutMetrics.wasLeftAndRightSwapped =
+        layoutContext.swapLeftAndRightInRTL &&
+        newLayoutMetrics.layoutDirection == LayoutDirection::RightToLeft;
+
+    // i don't think it makes sense to send layout events to nodes with display: contents
+
+    setLayoutMetrics(newLayoutMetrics);
+    
+    for (const auto &child : getChildren()) {
+        if (const auto& layoutableChild = std::dynamic_pointer_cast<const YogaLayoutableShadowNode>(child)) {
+            if (layoutableChild->yogaNode_.style().display() == yoga::Display::Contents) {
+                auto& contentsNode = shadowNodeFromContext(&layoutableChild->yogaNode_);
+                contentsNode.setContentsLayoutMetrics(layoutContext);
+            }
+        }
+    }
+}
+
 void YogaLayoutableShadowNode::layout(LayoutContext layoutContext) {
   // Reading data from a dirtied node does not make sense.
   react_native_assert(!yogaNode_.isDirty());
@@ -817,23 +850,7 @@ void YogaLayoutableShadowNode::layout(LayoutContext layoutContext) {
 
       if (child.shadowChild->yogaNode_.style().display() == yoga::Display::Contents) {
           auto& contentsNode = shadowNodeFromContext(&child.shadowChild->yogaNode_);
-          auto newLayoutMetrics = LayoutMetrics{};
-          newLayoutMetrics.pointScaleFactor = layoutContext.pointScaleFactor;
-          newLayoutMetrics.wasLeftAndRightSwapped =
-              layoutContext.swapLeftAndRightInRTL &&
-              newLayoutMetrics.layoutDirection == LayoutDirection::RightToLeft;
-
-// this can be called multiple times
-          // Child node's layout has changed. When a node is added to
-          // `affectedNodes`, onLayout event is called on the component. Comparing
-          // `newLayoutMetrics.frame` with `childNode.getLayoutMetrics().frame` to
-          // detect if layout has not changed is not advised, please refer to
-          // D22999891 for details.
-//          if (layoutContext.affectedNodes != nullptr) {
-//            layoutContext.affectedNodes->push_back(&childNode);
-//          }
-
-          contentsNode.setLayoutMetrics(newLayoutMetrics);
+          contentsNode.setContentsLayoutMetrics(layoutContext);
       }
       
     if (childYogaNode->getHasNewLayout()) {
