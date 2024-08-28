@@ -225,11 +225,11 @@ void YogaLayoutableShadowNode::adoptYogaChild(size_t index) {
       !getTraits().check(ShadowNodeTraits::Trait::LeafYogaNode));
 
   auto& childNode =
-      dynamic_cast<const YogaLayoutableShadowNode&>(*getChildren().at(index));
+      dynamic_cast<const YogaLayoutableShadowNode&>(*getChildren()[index]);
 
   if (childNode.yogaNode_.getOwner() == nullptr) {
     // The child node is not owned.
-      auto flattenedChildren = buildFlattenedChildrenList(std::static_pointer_cast<const YogaLayoutableShadowNode>(getChildren().at(index)));
+      auto flattenedChildren = buildFlattenedChildrenList(std::static_pointer_cast<const YogaLayoutableShadowNode>(getChildren()[index]));
       for (const auto& child : flattenedChildren) {
           if (&*child.yogaChild == &*child.shadowChild) {
               child.yogaChild->yogaNode_.setOwner(&yogaNode_);
@@ -354,23 +354,28 @@ void YogaLayoutableShadowNode::replaceChild(
         
         const auto flattenedNewChildren = buildFlattenedChildrenList(layoutableNewChild);
         
-        yogaNode_.setChildren({});
-        yogaLayoutableChildren_.clear();
-        
-        for (const auto& child : flattenedNewChildren) {
-            if (child.yogaChild->yogaNode_.getOwner() == nullptr) {
-                child.yogaChild->yogaNode_.setOwner(&yogaNode_);
-            }
+        auto currentItemIter = yogaLayoutableChildren_.begin();
+        while (currentItemIter != yogaLayoutableChildren_.end() && &*currentItemIter->shadowChild != layoutableOldChild) {
+            currentItemIter++;
         }
         
-        for (auto& child : getChildren()) {
-          if (auto layoutableChild = std::dynamic_pointer_cast<const YogaLayoutableShadowNode>(child)) {
-              for (const auto& child : buildFlattenedChildrenList(layoutableChild)) {
-                  yogaLayoutableChildren_.push_back(child);
-              }
+      for (const auto& child : buildFlattenedChildrenList(layoutableNewChild)) {
+          if (child.yogaChild->yogaNode_.getOwner() == nullptr) {
+              child.yogaChild->yogaNode_.setOwner(&yogaNode_);
           }
+          
+          if (currentItemIter != yogaLayoutableChildren_.end() && &*currentItemIter->shadowChild == layoutableOldChild) {
+              *currentItemIter++ = std::move(child);
+          } else {
+              yogaLayoutableChildren_.insert(currentItemIter++, std::move(child));
+          }
+      }
+        
+        while (currentItemIter != yogaLayoutableChildren_.end() && &*currentItemIter->shadowChild == layoutableOldChild) {
+            currentItemIter = yogaLayoutableChildren_.erase(currentItemIter);
         }
         
+        yogaNode_.setChildren({});
         auto index = 0;
         for (auto& layoutableChild : yogaLayoutableChildren_) {
             yogaNode_.insertChild(&layoutableChild.yogaChild->yogaNode_, index++);
@@ -475,7 +480,7 @@ void YogaLayoutableShadowNode::updateYogaChildren() {
           for (size_t yogaChildIndex = startIndex; yogaChildIndex < yogaLayoutableChildren_.size(); yogaChildIndex++) {
               auto& oldYogaChildNode = *oldYogaChildren.at(yogaChildIndex);
               auto& newYogaChildNode =
-                  yogaLayoutableChildren_.at(yogaChildIndex).yogaChild->yogaNode_;
+                  yogaLayoutableChildren_[yogaChildIndex].yogaChild->yogaNode_;
       
               isClean = isClean && !newYogaChildNode.isDirty() &&
                   (newYogaChildNode.style() == oldYogaChildNode.style());
@@ -817,21 +822,15 @@ static EdgeInsets calculateOverflowInset(
 }
 
 void YogaLayoutableShadowNode::setContentsLayoutMetrics(LayoutContext layoutContext) {
-    auto newLayoutMetrics = LayoutMetrics{};
-    newLayoutMetrics.pointScaleFactor = layoutContext.pointScaleFactor;
-    newLayoutMetrics.wasLeftAndRightSwapped =
-        layoutContext.swapLeftAndRightInRTL &&
-        newLayoutMetrics.layoutDirection == LayoutDirection::RightToLeft;
-
-    // i don't think it makes sense to send layout events to nodes with display: contents
-
-    setLayoutMetrics(newLayoutMetrics);
-    
-    for (const auto &child : getChildren()) {
-        if (const auto& layoutableChild = std::dynamic_pointer_cast<const YogaLayoutableShadowNode>(child)) {
-            if (layoutableChild->yogaNode_.style().display() == yoga::Display::Contents) {
-                auto& contentsNode = shadowNodeFromContext(&layoutableChild->yogaNode_);
-                contentsNode.setContentsLayoutMetrics(layoutContext);
+    if (layoutMetrics_ != EmptyLayoutMetrics) {
+        setLayoutMetrics(EmptyLayoutMetrics);
+        
+        for (const auto &child : getChildren()) {
+            if (const auto& layoutableChild = std::dynamic_pointer_cast<const YogaLayoutableShadowNode>(child)) {
+                if (layoutableChild->yogaNode_.style().display() == yoga::Display::Contents) {
+                    auto& contentsNode = shadowNodeFromContext(&layoutableChild->yogaNode_);
+                    contentsNode.setContentsLayoutMetrics(layoutContext);
+                }
             }
         }
     }
