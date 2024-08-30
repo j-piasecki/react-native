@@ -116,11 +116,11 @@ class YogaLayoutableShadowNode : public LayoutableShadowNode {
    */
   void updateYogaChildrenOwnersIfNeeded();
     
-    std::vector<Child> buildFlattenedChildrenList(const YogaLayoutableShadowNode::Shared& node) const;
+  std::vector<Child> buildFlattenedChildrenList(const YogaLayoutableShadowNode::Shared& node) const;
 
-    void initialize();
-    
-    void setContentsLayoutMetrics(LayoutContext layoutContext);
+  void initialize();
+
+  void setContentsLayoutMetrics(LayoutContext layoutContext);
     
   /*
    * Return true if child's yogaNode's owner is this->yogaNode_. Otherwise
