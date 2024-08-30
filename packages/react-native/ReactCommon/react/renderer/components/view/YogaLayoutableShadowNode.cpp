@@ -239,8 +239,7 @@ void YogaLayoutableShadowNode::adoptYogaChild(size_t index) {
         
           if (childYogaNode.yogaNode_.getOwner() == nullptr) {
             // The child node is not owned.
-              childYogaNode.yogaNode_.setOwner(&yogaNode_);
-              auto flattenedChildren = buildFlattenedChildrenList(std::static_pointer_cast<const YogaLayoutableShadowNode>(getChildren().at(index)));
+            childYogaNode.yogaNode_.setOwner(&yogaNode_);
             // At this point the child yoga node must be already inserted by the caller.
             // react_native_assert(layoutableChildNode.yogaNode_.isDirty());
           } else {
