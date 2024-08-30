@@ -305,6 +305,10 @@ void YogaLayoutableShadowNode::replaceChild(
     const ShadowNode::Shared& newChild,
     size_t suggestedIndex) {
     auto ancestors = newChild->getFamily().getAncestors(*this);
+    const YogaLayoutableShadowNode* layoutableOldChild = nullptr;
+    YogaLayoutableShadowNode::Shared layoutableNewChild = nullptr;
+        
+    
     if (ancestors.size() > 1) {
         const auto& childToClone = getChildren()[ancestors[0].second];
 
@@ -312,9 +316,13 @@ void YogaLayoutableShadowNode::replaceChild(
             return std::const_pointer_cast<ShadowNode>(newChild);
         });
         
+        layoutableOldChild = dynamic_cast<const YogaLayoutableShadowNode*>(childToClone.get());
+        layoutableNewChild = std::dynamic_pointer_cast<const YogaLayoutableShadowNode>(clonedDirectChild);
         LayoutableShadowNode::replaceChild(*childToClone, clonedDirectChild, suggestedIndex);
     } else {
-        LayoutableShadowNode::replaceChild(*getChildren().at(ancestors[0].second), newChild, suggestedIndex);
+        layoutableOldChild = dynamic_cast<const YogaLayoutableShadowNode*>(&oldChild);
+        layoutableNewChild = std::dynamic_pointer_cast<const YogaLayoutableShadowNode>(newChild);
+        LayoutableShadowNode::replaceChild(oldChild, newChild, suggestedIndex);
     }
   
 
@@ -324,11 +332,6 @@ void YogaLayoutableShadowNode::replaceChild(
     
   ensureUnsealed();
   ensureYogaChildrenLookFine();
-
-  auto layoutableOldChild =
-      dynamic_cast<const YogaLayoutableShadowNode*>(&oldChild);
-  auto layoutableNewChild =
-      std::dynamic_pointer_cast<const YogaLayoutableShadowNode>(newChild);
 
   if (layoutableOldChild == nullptr && layoutableNewChild == nullptr) {
     // No need to mutate yogaLayoutableChildren_
@@ -662,7 +665,7 @@ YogaLayoutableShadowNode& YogaLayoutableShadowNode::cloneChildInPlace(
   if (ReactNativeFeatureFlags::useRuntimeShadowNodeReferenceUpdateOnLayout()) {
     childNode.transferRuntimeShadowNodeReference(clonedChildNode);
   }
-    
+    // todo: layoutablechildren
     size_t index = 0;
     for (const auto& node : getChildren()) {
         if (node.get() == &childNode) {
