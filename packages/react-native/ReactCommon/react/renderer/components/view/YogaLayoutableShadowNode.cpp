@@ -308,7 +308,6 @@ void YogaLayoutableShadowNode::replaceChild(
     const YogaLayoutableShadowNode* layoutableOldChild = nullptr;
     YogaLayoutableShadowNode::Shared layoutableNewChild = nullptr;
         
-    
     if (ancestors.size() > 1) {
         const auto& childToClone = getChildren()[ancestors[0].second];
 
@@ -655,20 +654,11 @@ YogaLayoutableShadowNode& YogaLayoutableShadowNode::cloneChildInPlace(
   const auto& child = yogaLayoutableChildren_.at(layoutableChildIndex);
   const auto& childNode = *child.shadowChild;
 
-  // TODO: Why does this not use `ShadowNodeFragment::statePlaceholder()` like
-  // `adoptYogaChild()`?
-  auto clonedChildNode = childNode.clone(
-      {ShadowNodeFragment::propsPlaceholder(),
-       ShadowNodeFragment::childrenPlaceholder(),
-       childNode.getState()});
-
-  if (ReactNativeFeatureFlags::useRuntimeShadowNodeReferenceUpdateOnLayout()) {
-    childNode.transferRuntimeShadowNodeReference(clonedChildNode);
-  }
-    // todo: layoutablechildren
+    ShadowNode::Unshared clonedChildNode = nullptr;
+    
     size_t index = 0;
-    for (const auto& node : getChildren()) {
-        if (node.get() == &childNode) {
+    for (const auto& node : yogaLayoutableChildren_) {
+        if (node.yogaChild.get() == &childNode) {
             break;
         }
         index++;
@@ -678,11 +668,23 @@ YogaLayoutableShadowNode& YogaLayoutableShadowNode::cloneChildInPlace(
     
     // entire peth will be cloned for each child
     if (&*child.shadowChild != &*child.yogaChild) {
-        clonedChildNode = clonedChildNode->cloneTree(child.yogaChild->getFamily(), [&](const ShadowNode& oldNode) {
+        clonedChildNode = childNode.cloneTree(child.yogaChild->getFamily(), [&](const ShadowNode& oldNode) {
             const auto clone = oldNode.clone({.state = oldNode.getState()});
             result = &*clone;
             return clone;
         });
+    } else {
+        // TODO: Why does this not use `ShadowNodeFragment::statePlaceholder()` like
+        // `adoptYogaChild()`?
+        clonedChildNode = childNode.clone(
+            {ShadowNodeFragment::propsPlaceholder(),
+             ShadowNodeFragment::childrenPlaceholder(),
+             childNode.getState()});
+        result = &*clonedChildNode;
+    }
+    
+    if (ReactNativeFeatureFlags::useRuntimeShadowNodeReferenceUpdateOnLayout()) {
+      childNode.transferRuntimeShadowNodeReference(clonedChildNode);
     }
     
   replaceChild(childNode, clonedChildNode, index);
@@ -834,13 +836,13 @@ static EdgeInsets calculateOverflowInset(
 void YogaLayoutableShadowNode::setContentsLayoutMetrics(LayoutContext layoutContext) {
     if (layoutMetrics_ != EmptyLayoutMetrics) {
         setLayoutMetrics(EmptyLayoutMetrics);
-        
-        for (const auto &child : getChildren()) {
-            if (const auto& layoutableChild = std::dynamic_pointer_cast<const YogaLayoutableShadowNode>(child)) {
-                if (layoutableChild->yogaNode_.style().display() == yoga::Display::Contents) {
-                    auto& contentsNode = shadowNodeFromContext(&layoutableChild->yogaNode_);
-                    contentsNode.setContentsLayoutMetrics(layoutContext);
-                }
+    }
+    
+    for (const auto &child : getChildren()) {
+        if (const auto& layoutableChild = std::dynamic_pointer_cast<const YogaLayoutableShadowNode>(child)) {
+            if (layoutableChild->yogaNode_.style().display() == yoga::Display::Contents) {
+                auto& contentsNode = shadowNodeFromContext(&layoutableChild->yogaNode_);
+                contentsNode.setContentsLayoutMetrics(layoutContext);
             }
         }
     }
