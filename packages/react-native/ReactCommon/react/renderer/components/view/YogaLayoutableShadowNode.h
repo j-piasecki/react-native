@@ -115,8 +115,8 @@ class YogaLayoutableShadowNode : public LayoutableShadowNode {
    * -> back to owned because its parent is allocated at the same address.
    */
   void updateYogaChildrenOwnersIfNeeded();
-    
-  std::vector<Child> buildFlattenedChildrenList(const YogaLayoutableShadowNode::Shared& node) const;
+        
+  void runForEveryConcreteSubtree(const YogaLayoutableShadowNode::Shared& node, std::function<void(const YogaLayoutableShadowNode::Shared& subtreeRoot)> fn) const;
 
   void initialize();
 
