@@ -823,8 +823,6 @@ void YogaLayoutableShadowNode::setContentsLayoutMetrics(LayoutContext layoutCont
     setLayoutMetrics(EmptyLayoutMetrics);
   }
 
-  // TODO: figure out how not to traverse entire subtree and still update all relevant nodes
-  // The problem occurs when changing contents -> flex -> contents on a direct child of content view
   for (const auto &child : getChildren()) {
     if (const auto& layoutableChild = std::dynamic_pointer_cast<const YogaLayoutableShadowNode>(child)) {
       if (layoutableChild->yogaNode_.style().display() == yoga::Display::Contents) {
