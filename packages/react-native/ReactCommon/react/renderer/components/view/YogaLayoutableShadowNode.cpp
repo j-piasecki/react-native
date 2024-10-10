@@ -90,6 +90,12 @@ YogaLayoutableShadowNode::YogaLayoutableShadowNode(
   updateYogaChildren();
 
   ensureConsistency();
+          
+  if (yogaNode_.style().display() == yoga::Display::Contents) {
+    ShadowNode::traits_.set(ShadowNodeTraits::ForceFlattenView);
+  } else {
+    ShadowNode::traits_.unset(ShadowNodeTraits::ForceFlattenView);
+  }
 }
 
 YogaLayoutableShadowNode::YogaLayoutableShadowNode(
@@ -159,6 +165,24 @@ YogaLayoutableShadowNode::YogaLayoutableShadowNode(
   }
 
   ensureConsistency();
+                        
+  if (yogaNode_.style().display() == yoga::Display::Contents) {
+    ShadowNode::traits_.set(ShadowNodeTraits::ForceFlattenView);
+    
+    if (static_cast<const YogaLayoutableShadowNode&>(sourceShadowNode).yogaNode_.style().display() != yoga::Display::Contents) {
+      for (const auto& child : yogaLayoutableChildren_) {
+        child->yogaNode_.setDirty(true);
+      }
+    }
+  } else {
+    ShadowNode::traits_.unset(ShadowNodeTraits::ForceFlattenView);
+    
+    if (static_cast<const YogaLayoutableShadowNode&>(sourceShadowNode).yogaNode_.style().display() == yoga::Display::Contents) {
+      for (const auto& child : yogaLayoutableChildren_) {
+        child->yogaNode_.setDirty(true);
+      }
+    }
+  }
 }
 
 void YogaLayoutableShadowNode::cleanLayout() {
