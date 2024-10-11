@@ -484,7 +484,8 @@ static void cleanupContentsNodesRecursively(yoga::Node* const node) {
       child->setLayoutDimension(0, Dimension::Height);
       child->setHasNewLayout(true);
       child->setDirty(false);
-      
+      child->cloneChildrenIfNeeded();
+
       cleanupContentsNodesRecursively(child);
     }
   }
@@ -1358,13 +1359,15 @@ static void calculateLayoutImpl(
           ownerHeight)) {
     return;
   }
-
   // At this point we know we're going to perform work. Ensure that each child
   // has a mutable copy.
   node->cloneChildrenIfNeeded();
   // Reset layout flags, as they could have changed.
   node->setLayoutHadOverflow(false);
-
+  
+  // Clean and update all display: contents nodes with a direct path to the
+  // current node as they will not be traversed
+  cleanupContentsNodesRecursively(node);
   // STEP 1: CALCULATE VALUES FOR REMAINDER OF ALGORITHM
   const FlexDirection mainAxis =
       resolveDirection(node->style().flexDirection(), direction);
@@ -2325,7 +2328,6 @@ bool calculateLayoutInternal(
 
     node->setHasNewLayout(true);
     node->setDirty(false);
-    cleanupContentsNodesRecursively(node);
   }
 
   layout->generationCount = generationCount;
