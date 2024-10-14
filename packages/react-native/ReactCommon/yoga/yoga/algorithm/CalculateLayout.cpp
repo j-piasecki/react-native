@@ -1331,7 +1331,7 @@ static void calculateLayoutImpl(
     return;
   }
 
-  const auto childCount = node->getLayoutChildrenSize();
+  const auto childCount = node->getLayoutChildCount();
   if (childCount == 0) {
     measureNodeWithoutChildren(
         node,
@@ -1454,7 +1454,7 @@ static void calculateLayoutImpl(
   // STEP 4: COLLECT FLEX ITEMS INTO FLEX LINES
 
   // Indexes of children that represent the first and last items in the line.
-  Node::LayoutableChildren::Iterator layoutableChildrenIterator = node->getLayoutChildren().begin();
+  Node::LayoutableChildren::Iterator startOfLineIterator = node->getLayoutChildren().begin();
 
   // Number of lines.
   size_t lineCount = 0;
@@ -1467,7 +1467,7 @@ static void calculateLayoutImpl(
 
   // Max main dimension of all the lines.
   float maxLineMainDim = 0;
-  for (; layoutableChildrenIterator != node->getLayoutChildren().end();
+  for (; startOfLineIterator != node->getLayoutChildren().end();
        lineCount++) {
     auto flexLine = calculateFlexLine(
         node,
@@ -1476,7 +1476,7 @@ static void calculateLayoutImpl(
         mainAxisOwnerSize,
         availableInnerWidth,
         availableInnerMainDim,
-        layoutableChildrenIterator,
+        startOfLineIterator,
         lineCount);
 
     // If we don't need to measure the cross axis, we can skip the entire flex

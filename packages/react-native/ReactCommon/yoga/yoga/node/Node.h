@@ -253,7 +253,7 @@ class YG_EXPORT Node : public ::YGNode {
     return LayoutableChildren(this);
   }
 
-  size_t getLayoutChildrenSize() const {
+  size_t getLayoutChildCount() const {
     if (contentsChildren_ == 0) {
       return children_.size();
     } else {
