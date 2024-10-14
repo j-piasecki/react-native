@@ -47,6 +47,7 @@ class YG_EXPORT Node : public ::YGNode {
             
             Iterator& operator++() {
                 next();
+                currentNodeIndex_++;
                 return *this;
             }
 
@@ -54,6 +55,10 @@ class YG_EXPORT Node : public ::YGNode {
                 Iterator tmp = *this;
                 ++(*this);
                 return tmp;
+            }
+            
+            size_t index() const {
+                return currentNodeIndex_;
             }
             
             friend bool operator== (const Iterator& a, const Iterator& b) {
@@ -113,6 +118,7 @@ class YG_EXPORT Node : public ::YGNode {
             
             const Node* node_;
             size_t childIndex_;
+            size_t currentNodeIndex_{0};
             Backtrack backtrack_;
             
             friend LayoutableChildren;
@@ -120,7 +126,7 @@ class YG_EXPORT Node : public ::YGNode {
         
         LayoutableChildren(const Node* node) : node_(node) {}
 
-        Iterator begin() {
+        Iterator begin() const {
             if (node_->getChildCount() > 0) {
                 auto result = Iterator(node_, 0);
                 result.skipContentsNodes();
@@ -130,7 +136,7 @@ class YG_EXPORT Node : public ::YGNode {
             }
         }
         
-        Iterator end() {
+        Iterator end() const {
             return Iterator(nullptr, -1);
         }
 
@@ -242,22 +248,21 @@ class YG_EXPORT Node : public ::YGNode {
   const std::vector<Node*>& getChildren() const {
     return children_;
   }
+    
+  const LayoutableChildren getLayoutChildren() const {
+    return LayoutableChildren(this);
+  }
 
-  // This needs to be optimized, not to create a new vector every time
-  const std::vector<Node*> getLayoutChildren() const {
-    std::vector<Node*> result;
-    for (auto child : LayoutableChildren(this)) {
-      result.push_back(child);
-    }
-    return result;
-  }
-  
-  Node* getLayoutChild(size_t index) const {
-    return getLayoutChildren()[index];
-  }
-  
   size_t getLayoutChildrenSize() const {
-    return getLayoutChildren().size();
+    if (contentsChildren_ == 0) {
+      return children_.size();
+    } else {
+      size_t count = 0;
+      for (auto iter = getLayoutChildren().begin(); iter != getLayoutChildren().end(); iter++) {
+        count++;
+      }
+      return count;
+    }
   }
 
   Node* getChild(size_t index) const {
@@ -414,6 +419,7 @@ class YG_EXPORT Node : public ::YGNode {
   bool isReferenceBaseline_ : 1 = false;
   bool isDirty_ : 1 = true;
   bool alwaysFormsContainingBlock_ : 1 = false;
+  size_t contentsChildren_ = 0;
   NodeType nodeType_ : bitCount<NodeType>() = NodeType::Default;
   void* context_ = nullptr;
   YGMeasureFunc measureFunc_ = nullptr;
