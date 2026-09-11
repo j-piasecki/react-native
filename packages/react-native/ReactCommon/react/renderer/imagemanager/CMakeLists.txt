@@ -30,6 +30,7 @@ target_include_directories(react_renderer_imagemanager
         PRIVATE
           ${CMAKE_CURRENT_SOURCE_DIR}
         )
+target_include_directories(react_renderer_imagemanager INTERFACE ${REACT_COMMON_DIR}/react/renderer/imagemanager)
 
 react_native_android_selector(mapbufferjni mapbufferjni "")
 react_native_android_selector(reactnativejni reactnativejni "")

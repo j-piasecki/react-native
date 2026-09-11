@@ -158,7 +158,8 @@ val preparePrefab by
                           "../ReactCommon/react/renderer/imagemanager/",
                           "react/renderer/imagemanager/",
                       ),
-                      Pair("../ReactCommon/react/renderer/imagemanager/platform/cxx/", ""),
+                      Pair("../ReactCommon/react/renderer/imagemanager/React/", "React/"),
+                      Pair("../ReactCommon/react/renderer/imagemanager/platform/android/", ""),
                       // react_renderer_mounting
                       Pair("../ReactCommon/react/renderer/mounting/", "react/renderer/mounting/"),
                       // react_renderer_scheduler

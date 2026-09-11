@@ -168,6 +168,12 @@ const PodspecExceptions /*: {[key: string]: PodSpecConfiguration} */ = {
       },
 
       {
+        name: 'imagemanagerUmbrella',
+        headerPatterns: ['react/renderer/imagemanager/React/*.h'],
+        headerDir: 'React',
+      },
+
+      {
         name: 'mounting',
         headerPatterns: ['react/renderer/mounting/**/*.h'],
         excludePatterns: ['react/renderer/mounting/tests'],
