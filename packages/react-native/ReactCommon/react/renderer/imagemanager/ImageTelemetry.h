@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <react/cxxstableapi/FrameworksGuard.h>
+#include <react/cxxstableapi/UmbrellaGuard.h>
 
 #include <react/renderer/core/ReactPrimitives.h>
 #include <react/utils/Telemetry.h>

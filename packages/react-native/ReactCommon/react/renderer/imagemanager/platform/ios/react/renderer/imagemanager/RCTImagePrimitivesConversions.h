@@ -5,8 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <react/cxxstableapi/FrameworksGuard.h>
-
 #import <UIKit/UIKit.h>
 
 #import <React/RCTConvert.h>

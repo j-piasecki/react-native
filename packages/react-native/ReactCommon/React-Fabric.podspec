@@ -182,6 +182,12 @@ Pod::Spec.new do |s|
     ss.header_dir           = "react/renderer/imagemanager"
   end
 
+  s.subspec "imagemanagerUmbrella" do |ss|
+    ss.source_files         = "react/renderer/imagemanager/React/*.h"
+    ss.header_dir           = ""
+    ss.header_mappings_dir  = "react/renderer/imagemanager"
+  end
+
   s.subspec "mounting" do |ss|
     ss.dependency             "React-jsinspectortracing"
     ss.source_files         = podspec_sources("react/renderer/mounting/**/*.{m,mm,cpp,h}", "react/renderer/mounting/**/*.h")
