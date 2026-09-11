@@ -12,13 +12,18 @@ import com.facebook.react.utils.DependencyUtils.configureDependencies
 import com.facebook.react.utils.DependencyUtils.configureRepositories
 import com.facebook.react.utils.DependencyUtils.exclusiveEnterpriseRepository
 import com.facebook.react.utils.DependencyUtils.getDependencySubstitutions
+import com.facebook.react.utils.DependencyUtils.isMavenArtifactVersionPublished
 import com.facebook.react.utils.DependencyUtils.isNightly
 import com.facebook.react.utils.DependencyUtils.isReactNativeMavenMirrorEnabled
 import com.facebook.react.utils.DependencyUtils.mavenRepoFromURI
 import com.facebook.react.utils.DependencyUtils.mavenRepoFromUrl
 import com.facebook.react.utils.DependencyUtils.readVersionAndGroupStrings
 import com.facebook.react.utils.DependencyUtils.shouldAddJitPack
+import com.sun.net.httpserver.HttpServer
+import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.URI
+import java.util.concurrent.atomic.AtomicInteger
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository
 import org.gradle.testfixtures.ProjectBuilder
@@ -76,6 +81,42 @@ class DependencyUtilsTest {
         },
     )
         .isNotNull()
+  }
+
+  @Test
+  fun configureRepositories_withUnpublishedVersion_doesNotQueryRemoteRepository() {
+    val requests = AtomicInteger()
+    val loopbackAddress = InetAddress.getLoopbackAddress()
+    val server = HttpServer.create(InetSocketAddress(loopbackAddress, 0), 0)
+    server.createContext("/") { exchange ->
+      requests.incrementAndGet()
+      exchange.sendResponseHeaders(404, -1)
+      exchange.close()
+    }
+    server.start()
+
+    try {
+      val project = createProject()
+      project.extensions.extraProperties.set(
+          "exclusiveEnterpriseRepository",
+          "http://${loopbackAddress.hostAddress}:${server.address.port}",
+      )
+      configureRepositories(project, DependencyUtils.Coordinates("1000.0.0", "4.5.6"))
+      (project.repositories.first() as MavenArtifactRepository).isAllowInsecureProtocol = true
+
+      val published = project.configurations.create("published")
+      project.dependencies.add(published.name, "com.facebook.react:react-android:0.88.0")
+      assertThat(runCatching { published.resolve() }.isFailure).isTrue()
+      assertThat(requests.get()).isGreaterThan(0)
+
+      requests.set(0)
+      val unpublished = project.configurations.create("unpublished")
+      project.dependencies.add(unpublished.name, "com.facebook.react:react-android:1000.0.0")
+      assertThat(runCatching { unpublished.resolve() }.isFailure).isTrue()
+      assertThat(requests.get()).isZero()
+    } finally {
+      server.stop(0)
+    }
   }
 
   @Test
@@ -415,6 +456,32 @@ class DependencyUtilsTest {
   }
 
   @Test
+  fun configureDependencies_withUnpublishedVersion_preservesResolutionStrategy() {
+    val project = createProject()
+
+    configureDependencies(project, DependencyUtils.Coordinates("1000.0.0", "4.5.6"))
+
+    val forcedModules = project.configurations.first().resolutionStrategy.forcedModules
+    assertThat(
+        forcedModules.any {
+          it.toString() == "com.facebook.react:react-android:1000.0.0"
+        },
+    )
+        .isTrue()
+    assertThat(forcedModules.any { it.toString() == "com.facebook.hermes:hermes-android:4.5.6" })
+        .isTrue()
+
+    val dependencySubstitutions =
+        getDependencySubstitutions(DependencyUtils.Coordinates("1000.0.0", "4.5.6"))
+    assertThat(
+        dependencySubstitutions.any {
+          it.second == "com.facebook.react:react-android:1000.0.0"
+        },
+    )
+        .isTrue()
+  }
+
+  @Test
   fun configureDependencies_withVersionString_appliesResolutionStrategy() {
     val project = createProject()
 
@@ -575,6 +642,12 @@ class DependencyUtilsTest {
 
     assertThat(versionString).isEqualTo("1000.0.0")
     assertThat(hermesVersionString).isEqualTo("1000.0.0")
+  }
+
+  @Test
+  fun isMavenArtifactVersionPublished_withMainVersion_returnsFalse() {
+    assertThat("1000.0.0".isMavenArtifactVersionPublished()).isFalse()
+    assertThat("0.88.0".isMavenArtifactVersionPublished()).isTrue()
   }
 
   @Test

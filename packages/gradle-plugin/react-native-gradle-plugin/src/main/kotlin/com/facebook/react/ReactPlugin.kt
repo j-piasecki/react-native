@@ -95,7 +95,7 @@ class ReactPlugin : Plugin<Project> {
         val versionAndGroupStrings =
             readVersionAndGroupStrings(project, propertiesFile, hermesVersionPropertiesFile)
         configureDependencies(project, versionAndGroupStrings)
-        configureRepositories(project, versionAndGroupStrings.isNightly)
+        configureRepositories(project, versionAndGroupStrings)
       }
 
       configureReactNativeNdk(project, extension)

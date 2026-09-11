@@ -17,6 +17,7 @@ const path = require('node:path');
 const MAVEN_CENTRAL_REPOSITORY = 'https://repo1.maven.org/maven2';
 const REACT_NATIVE_MAVEN_MIRROR_REPOSITORY =
   'https://repo.reactnative.dev/maven2';
+const UNPUBLISHED_MAVEN_VERSION = '1000.0.0';
 
 /**
  * Creates a folder if it does not exist
@@ -96,6 +97,12 @@ async function computeNightlyTarballURL(
   artifactCoordinate /*: string */,
   artifactName /*: string */,
 ) /*: Promise<string> */ {
+  if (!isMavenArtifactVersionPublished(version)) {
+    throw new Error(
+      `Maven artifacts are not published for the development version ${version}`,
+    );
+  }
+
   const xmlUrl = `https://central.sonatype.com/repository/maven-snapshots/com/facebook/${subGroup}/${artifactCoordinate}/${version}-SNAPSHOT/maven-metadata.xml`;
 
   const response = await fetch(xmlUrl);
@@ -156,6 +163,11 @@ function isReactNativeMavenMirrorEnabled() /*: boolean */ {
   return value.toLowerCase() !== 'false' && value !== '0';
 }
 
+function isMavenArtifactVersionPublished(version /*: string */) /*: boolean */ {
+  // 1000.0.0 identifies a source checkout on main and is never published to Maven.
+  return version !== UNPUBLISHED_MAVEN_VERSION;
+}
+
 module.exports = {
   createFolderIfNotExists,
   findFirst,
@@ -163,4 +175,5 @@ module.exports = {
   createLogger,
   computeNightlyTarballURL,
   getMavenRepositoryUrls,
+  isMavenArtifactVersionPublished,
 };

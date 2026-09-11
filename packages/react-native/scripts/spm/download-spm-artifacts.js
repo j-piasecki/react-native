@@ -141,8 +141,21 @@ function parseArgs(argv /*: Array<string> */) /*: DownloadArgs */ {
 const MAVEN_CENTRAL_REPOSITORY = 'https://repo1.maven.org/maven2';
 const REACT_NATIVE_MAVEN_MIRROR_REPOSITORY =
   'https://repo.reactnative.dev/maven2';
+const UNPUBLISHED_MAVEN_VERSION = '1000.0.0';
 const MAVEN_SNAPSHOT =
   'https://central.sonatype.com/repository/maven-snapshots';
+
+function isMavenArtifactVersionPublished(version /*: string */) /*: boolean */ {
+  // 1000.0.0 identifies a source checkout on main and is never published to Maven.
+  return version !== UNPUBLISHED_MAVEN_VERSION;
+}
+
+function isMavenArtifactUrlPublished(url /*: string */) /*: boolean */ {
+  return (
+    !url.includes(`/${UNPUBLISHED_MAVEN_VERSION}/`) &&
+    !url.includes(`/${UNPUBLISHED_MAVEN_VERSION}-SNAPSHOT/`)
+  );
+}
 
 /**
  * The mirror is ON unless RCT_REACT_NATIVE_MAVEN_MIRROR_ENABLED is
@@ -219,6 +232,12 @@ async function resolveSnapshotUrl(
   coordinate /*: string */,
   artifactName /*: string */,
 ) /*: Promise<string> */ {
+  if (!isMavenArtifactVersionPublished(version)) {
+    throw new Error(
+      `Maven artifacts are not published for the development version ${version}`,
+    );
+  }
+
   const metadataUrl =
     `${MAVEN_SNAPSHOT}/com/facebook/${subGroup}/${coordinate}/` +
     `${version}-SNAPSHOT/maven-metadata.xml`;
@@ -353,6 +372,10 @@ async function resolveLatestV1Version() /*: Promise<string> */ {
 }
 
 async function exists(url /*: string */) /*: Promise<boolean> */ {
+  if (!isMavenArtifactUrlPublished(url)) {
+    return false;
+  }
+
   try {
     // $FlowFixMe[incompatible-call] global fetch not in Flow stubs
     const res = await fetch(url, {method: 'HEAD'});
@@ -1510,6 +1533,7 @@ module.exports = {
   validateArtifactsCache,
   // Exposed for unit tests (pure / fetch-stubbable helpers).
   mavenRepositoryUrls,
+  isMavenArtifactVersionPublished,
   reactNativeMavenMirrorEnabled,
   rnCoreReleaseUrls,
   rnDepsReleaseUrls,

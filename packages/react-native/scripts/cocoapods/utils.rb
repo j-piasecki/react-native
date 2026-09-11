@@ -15,6 +15,7 @@ require_relative "./jsengine.rb"
 class ReactNativePodsUtils
     MAVEN_CENTRAL_REPOSITORY = "https://repo1.maven.org/maven2"
     REACT_NATIVE_MAVEN_MIRROR_REPOSITORY = "https://repo.reactnative.dev/maven2"
+    UNPUBLISHED_MAVEN_VERSION = "1000.0.0"
 
     # Opt-in removal of the legacy TurboModule and component interop layers. Both are
     # off by default and will become the default in a future React Native release.
@@ -47,6 +48,11 @@ class ReactNativePodsUtils
         return true if value == nil || value == ""
 
         value.downcase != "false" && value != "0"
+    end
+
+    def self.maven_artifact_version_published?(version)
+        # 1000.0.0 identifies a source checkout on main and is never published to Maven.
+        return version != UNPUBLISHED_MAVEN_VERSION
     end
 
     def self.warn_if_not_on_arm64
@@ -833,6 +839,9 @@ class ReactNativePodsUtils
     # (DNS failure, no route, ...) the probe is left uncached so that a
     # transient hiccup doesn't permanently mark the artifact as missing.
     def self.artifact_exists?(tarball_url)
+        unpublished_version = Regexp.escape(UNPUBLISHED_MAVEN_VERSION)
+        return false if tarball_url.match?(%r{/#{unpublished_version}(?:-SNAPSHOT)?/})
+
         unless @@artifact_exists_cache.key?(tarball_url)
             # -L is used to follow redirects, useful for the nightlies
             # The url is wrapped in quotes to avoid escaping & and ?.
