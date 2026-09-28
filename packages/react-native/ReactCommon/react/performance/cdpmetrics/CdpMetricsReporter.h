@@ -9,11 +9,11 @@
 
 #include <react/cxxstableapi/PrivateGuard.h>
 
-#include <ReactCommon/RuntimeExecutor.h>
+#include <React/RuntimeExecutor.h>
+#include <React/Timing.h>
 #include <jsi/jsi.h>
 #include <react/performance/timeline/PerformanceEntry.h>
 #include <react/performance/timeline/PerformanceEntryReporterListeners.h>
-#include <react/timing/primitives.h>
 
 namespace facebook::react {
 
